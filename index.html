@@ -77,8 +77,6 @@ h1,h2,h3{margin:0;font-family:"Palatino Linotype",Palatino,"Book Antiqua",Georgi
 .pips{display:flex;gap:5px;margin-left:auto}
 .pips i{width:11px;height:11px;border-radius:50%;background:#3a2d5c}.pips i.d{background:var(--good)}.pips i.n{background:var(--sj);box-shadow:0 0 0 3px #ffffff22}.pips i.m{background:var(--bad)}
 .combo{font-weight:800;color:#ffb04a}
-.timer{height:5px;border-radius:3px;background:#3a2d5c;margin:10px 0 0;overflow:hidden}
-.timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ffd257,#ff8a3c);transform-origin:left}
 .foe{display:flex;align-items:center;gap:12px;background:#120d1f;border:2px solid #57457f;border-radius:16px;padding:8px 12px;margin-top:12px}
 .foe .face{font-size:46px;transition:transform .2s}.foe.hit .face{animation:hit .4s}.foe .grow{flex:1}
 @keyframes hit{20%{transform:translateX(-8px) rotate(-8deg);filter:brightness(3)}60%{transform:translateX(6px)}}
@@ -205,7 +203,6 @@ input.disp{color:var(--ink);font:inherit;font-size:26px;font-weight:800;text-tra
 <section class="modal hidden" id="quiz"><div class="card">
   <button class="x" id="qClose" aria-label="Leave">✕</button>
   <div class="qtop"><span class="chip" id="qChip"></span><span class="combo" id="qCombo"></span><div class="pips" id="qPips"></div></div>
-  <div class="timer"><i id="qTimer"></i></div>
   <div class="foe hidden" id="qFoe"><div class="face" id="fFace"></div><div class="grow"><b id="fName"></b><div class="hp" id="fHp"></div></div><div class="hearts" id="fHearts"></div></div>
   <div class="qprompt" id="qPrompt"></div>
   <div id="qvis"></div>
@@ -540,7 +537,7 @@ const ACH=[
 ['a4','🌟','Legendary Streak','Get 20 first-try answers in a row',s=>s.st.best>=20],
 ['a5','💯','Century','Answer 100 questions correctly',s=>s.st.right>=100],
 ['a6','🧠','Big Brain','Answer 500 questions correctly',s=>s.st.right>=500],
-['a7','⚡','Quick Thinker','Earn 10 speed bonuses',s=>s.st.fast>=10],
+['a7','💎','Perfectionist','Win 5 perfect trials (4 out of 4 on the first try)',s=>s.st.perfect>=5],
 ['a8','🔐','Locksmith','Crack 5 combination locks',s=>s.st.locks>=5],
 ['a9','🕵️','Code Breaker','Decode 5 secret rune-codes',s=>s.st.ciphers>=5],
 ['a10','🧰','Treasure Hunter','Open 10 treasure chests',s=>s.st.chests>=10],
@@ -573,14 +570,14 @@ const SHOP=[
 {id:'lamp4',e:'🌈',name:'Prism Lantern',cost:200,desc:'Slowly shifts through every colour.',col:null},
 {id:'pet0',e:'🦉',name:'Hoot the Owl',cost:120,desc:'Wise. Hints no longer cost you any XP.'},
 {id:'pet1',e:'🦊',name:'Flick the Fox',cost:120,desc:'Quick. Sniffs out gems from much further away.'},
-{id:'pet2',e:'🐢',name:'Shellby the Turtle',cost:80,desc:'Patient. Gives you 8 extra seconds for speed bonuses.'},
+{id:'pet2',e:'🐢',name:'Shellby the Turtle',cost:80,desc:'Patient. Riddle chests give you 3 tries instead of 2.'},
 {id:'pet3',e:'🐲',name:'Cinderpip the Dragonling',cost:250,desc:'Brave. Gives you one extra heart in boss fights.'},
 {id:'shield',e:'🛡️',name:'Shield Charm',cost:40,desc:'Blocks one wrong answer in a boss fight. Carry up to 3.'}];
 
 /* ---------------- save ---------------- */
 const SAVEKEY='emberdeep-save-v1';
 const newSkill=()=>({lv:2,up:0,down:0,right:0,total:0});
-function freshSave(){return{v:1,name:'Adventurer',xp:0,gems:0,depth:0,best:0,fl:null,relics:{},codex:[],ach:[],skills:{maths:newSkill(),logic:newSkill(),science:newSkill(),words:newSkill()},st:{ans:0,right:0,streak:0,best:0,boss:0,flawless:0,chests:0,fast:0,jumps:0,locks:0,ciphers:0,gemsAll:0,explored:0},shop:{own:['lamp0'],lamp:'lamp0',pet:'',shields:0},sound:1,started:0}}
+function freshSave(){return{v:1,name:'Adventurer',xp:0,gems:0,depth:0,best:0,fl:null,relics:{},codex:[],ach:[],skills:{maths:newSkill(),logic:newSkill(),science:newSkill(),words:newSkill()},st:{ans:0,right:0,streak:0,best:0,boss:0,flawless:0,chests:0,perfect:0,jumps:0,locks:0,ciphers:0,gemsAll:0,explored:0},shop:{own:['lamp0'],lamp:'lamp0',pet:'',shields:0},sound:1,started:0}}
 function sanitize(raw){const s=freshSave();if(!raw||typeof raw!=='object'||Array.isArray(raw))return s;
  const n=(v,lo,hi,d)=>typeof v==='number'&&Number.isFinite(v)?clamp(Math.floor(v),lo,hi):d;
  if(typeof raw.name==='string')s.name=raw.name.replace(/[^\p{L}\p{N} '\-]/gu,'').trim().slice(0,16)||'Adventurer';
@@ -768,7 +765,7 @@ function interact(){const t=target;if(!t||paused)return;const f=FL();
  else if(t.t==='chest')startQuiz('chest',t.i);
  else if(t.t==='rune'){const cx=CODEX.filter(c=>c.fl===theme())[t.i],isNew=!S.codex.includes(cx.id);S.fl.ru.push(t.i);if(isNew){S.codex.push(cx.id)}gainXP(isNew?25:8);save();checkAch();showLoot({eye:'RUNE STONE',title:cx.t,html:`<div class="relic" style="--rc:#c9a8ff">📜</div><div class="fact" style="--rc:#c9a8ff">${esc(cx.f)}</div><div class="gains"><span>+${isNew?25:8} XP</span>${isNew?'<span>📜 Added to your Codex</span>':''}</div>`,rc:'#c9a8ff'});chime([440,554,659,880])}
  else if(t.t==='door'){const n=S.fl.g.filter(Boolean).length;if(n<4){talk('🚪','SEALED','The sealed door',`Four sigil-shaped hollows glow in the wood. You have ${n} of 4. Win the rest from this floor’s guardians.`);return}S.fl.door=1;W.g[18][16]=0;save();chime([196,247,294,392,494],'triangle');burst(innerWidth/2,innerHeight/2,50);toast('🚪 The seal breaks! The door grinds open.','Something big is waiting inside…')}
- else if(t.t==='boss'){talk(f.boss[0],'FLOOR BOSS',f.boss[1],f.boss[2]+` (It has 6 health. You have ${3+(S.shop.pet==='pet3'?1:0)} hearts${S.shop.shields?` and ${S.shop.shields} shield charm${S.shop.shields>1?'s':''}`:''}. Fast first-try answers hit twice as hard.)`,()=>startQuiz('boss'),'Fight! ⚔️')}
+ else if(t.t==='boss'){talk(f.boss[0],'FLOOR BOSS',f.boss[1],f.boss[2]+` (It has 6 health. You have ${3+(S.shop.pet==='pet3'?1:0)} hearts${S.shop.shields?` and ${S.shop.shields} shield charm${S.shop.shields>1?'s':''}`:''}. First-try answers on a streak of 3 or more land critical hits for double damage.)`,()=>startQuiz('boss'),'Fight! ⚔️')}
  else if(t.t==='stairs'){const last=theme()===4;talk('⬇️','THE WAY DOWN','Stairs into the dark',last?'Below Emberclaw’s vault the dungeon begins again, deeper and harder, with tougher questions on every floor. Ready?':`The stairs spiral down to ${FLOORS[(theme()+1)%5].name}. ${FLOORS[(theme()+1)%5].blurb}`,()=>{S.depth++;S.fl=null;enterFloor();save();closeM();checkAch();toast(`⬇️ Floor ${S.depth+1}: ${FL().name}`,FL().blurb);chime([392,330,262,196],'triangle')},'Descend →')}}
 
 /* ---------------- quiz ---------------- */
@@ -776,12 +773,12 @@ let Q=null;
 function startQuiz(kind,ix){const f=FL();Q={kind,ix,qi:0,n:kind==='guardian'?4:kind==='chest'?1:99,res:[],hp:6,hearts:3+(S.shop.pet==='pet3'?1:0),lost:0,off:rint(0,3),xp:0};openM('quiz');nextQ()}
 function nextQ(){const f=FL(),sub=Q.kind==='chest'?pick(Object.keys(SUBJECTS)):f.sub==='mix'?Object.keys(SUBJECTS)[(Q.qi+Q.off)%4]:f.sub,sk=S.skills[sub];let L=sk.lv+cycle()+(Q.kind==='guardian'&&Q.qi===3&&sk.up>=2?1:0),q;
  if(Q.kind==='boss'&&Q.hp<=1){q=lockPuzzle(3);q.sub='logic';q.lv=clamp(L,1,6);q.prompt='FINAL BLOW! '+q.prompt}else q=makeQ(sub,L);
- Object.assign(Q,{q,tries:0,hint:false,done:false,t0:performance.now(),win:({choice:12,num:25,text:45,lock:120}[q.type]+(S.shop.pet==='pet2'?8:0))*1e3});renderQ()}
+ Object.assign(Q,{q,tries:0,hint:false,done:false,t0:performance.now()});renderQ()}
 function renderQ(){const q=Q.q,sj=SUBJECTS[q.sub],card=$('#quiz .card');card.style.setProperty('--sj',sj.col);card.scrollTop=0;$('#qChip').textContent=`${sj.icon} ${sj.name.toUpperCase()} · LV ${q.lv}`;$('#qCombo').textContent=S.st.streak>=2?`🔥 ${S.st.streak}`:'';
  $('#qPips').innerHTML=Q.kind==='boss'?'':Array.from({length:Q.n},(v,i)=>`<i class="${i<Q.qi?(Q.res[i]?'d':'m'):i===Q.qi?'n':''}"></i>`).join('');
  const foe=$('#qFoe');if(Q.kind==='boss'){const b=FL().boss;foe.classList.remove('hidden');$('#fFace').textContent=b[0];$('#fName').textContent=b[1];drawFoe()}else if(Q.kind==='guardian'){const gd=FL().guardians[Q.ix];foe.classList.remove('hidden');$('#fFace').textContent=gd[0];$('#fName').textContent=gd[1];$('#fHp').innerHTML='';$('#fHearts').textContent=''}else foe.classList.add('hidden');
  $('#qPrompt').textContent=q.prompt;$('#qvis').innerHTML=q.visual||'';$('#qFb').className='fb';$('#qFb').innerHTML='';$('#qNext').classList.add('hidden');const hb=$('#qHint');hb.classList.remove('hidden');hb.disabled=false;hb.textContent=S.shop.pet==='pet0'?'💡 Hint (free, thanks to Hoot)':'💡 Hint (halves the XP)';
- const tb=$('#qTimer');tb.getAnimations().forEach(a=>a.cancel());RM||tb.animate([{transform:'scaleX(1)'},{transform:'scaleX(0)'}],{duration:Q.win,fill:'forwards'});
+
  const A=$('#qAns');A.innerHTML='';
  if(q.type==='choice'){A.className='ans';q.options.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.addEventListener('click',()=>answer(o,b));A.appendChild(b)});setTimeout(()=>A.firstChild&&A.firstChild.focus({preventScroll:true}),80)}
  else if(q.type==='num'){A.className='typed';Q.buf='';A.innerHTML=`<div class="disp" id="qDisp"></div><div class="pad">${['1','2','3','4','5','6','7','8','9','0','⌫','±','.'].map(k=>`<button data-k="${k}">${k}</button>`).join('')}<button class="go" data-k="ok">Check ✓</button></div>`;A.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>padKey(b.dataset.k)));showBuf()}
@@ -793,18 +790,18 @@ function showDials(){$$('#qDials .dial').forEach((d,i)=>{d.querySelector('b').te
 function padKey(k){if(!Q||Q.done||Q.q.type!=='num')return;if(k==='ok'){Q.buf!==''&&Q.buf!=='-'&&answer(Q.buf,$('#qDisp'));return}if(k==='⌫')Q.buf=Q.buf.slice(0,-1);else if(k==='±')Q.buf=Q.buf[0]==='-'?Q.buf.slice(1):'-'+Q.buf;else if(k==='.'){Q.buf.includes('.')||(Q.buf+=Q.buf===''||Q.buf==='-'?'0.':'.')}else if(Q.buf.replace(/\D/g,'').length<9)Q.buf+=k;tone(600,.03,'square',.015);showBuf()}
 function judge(v){const q=Q.q;if(q.type==='num')return v!==''&&Math.abs(parseFloat(v)-parseFloat(q.answer))<1e-9;if(q.type==='text')return String(v).trim().toUpperCase()===q.answer;return String(v)===q.answer}
 function answer(val,el){if(!Q||Q.done)return;const q=Q.q,sk=S.skills[q.sub],fb=$('#qFb'),boss=Q.kind==='boss';
- if(judge(val)){Q.done=true;const first=Q.tries===0,fast=first&&performance.now()-Q.t0<Q.win;S.st.ans++;S.st.right++;
+ if(judge(val)){Q.done=true;const first=Q.tries===0;S.st.ans++;S.st.right++;
   if(first){sk.total++;sk.right++;S.st.streak++;S.st.best=Math.max(S.st.best,S.st.streak);sk.up++;sk.down=0;if(sk.up>=3&&sk.lv<6){sk.lv++;sk.up=0;setTimeout(()=>toast(`${SUBJECTS[q.sub].icon} ${SUBJECTS[q.sub].name} is now level ${sk.lv}!`,'The questions get tougher'),900)}}
-  fast&&S.st.fast++;q.type==='lock'&&S.st.locks++;q.type==='text'&&/code/.test(q.prompt)&&S.st.ciphers++;
-  let xp=(8+4*q.lv)*(first?1.5:1)*(Q.hint&&S.shop.pet!=='pet0'?.5:1)+(fast?6:0)+(first?Math.min(S.st.streak,10):0);xp=Math.round(xp);Q.xp+=xp;Q.res[Q.qi]=first?1:2;gainXP(xp);
-  el.classList.add('ok');q.type==='choice'&&$$('#qAns .opt').forEach(b=>b.disabled=true);$('#qTimer').getAnimations().forEach(a=>a.pause());
-  let extra='';if(boss){const dmg=fast?2:1;Q.hp=Math.max(0,Q.hp-dmg);const fo=$('#qFoe');fo.classList.remove('hit');void fo.offsetWidth;fo.classList.add('hit');drawFoe();extra=fast?' <b>Critical hit! −2</b>':' Hit! −1';tone(140,.2,'sawtooth',.06);tone(90,.25,'sawtooth',.06,.08)}
-  fb.className='fb ok';fb.innerHTML=`<b>${pick(['Correct!','Brilliant!','Spot on!','Nailed it!','Sharp thinking!'])}</b> +${xp} XP${fast?' ⚡ speed bonus':''}${extra}<br>${esc(q.explain)}`;
+  const crit=boss&&first&&S.st.streak>=3;q.type==='lock'&&S.st.locks++;q.type==='text'&&/code/.test(q.prompt)&&S.st.ciphers++;
+  let xp=(8+4*q.lv)*(first?1.5:1)*(Q.hint&&S.shop.pet!=='pet0'?.5:1)+(first?Math.min(S.st.streak,10):0);xp=Math.round(xp);Q.xp+=xp;Q.res[Q.qi]=first?1:2;gainXP(xp);
+  el.classList.add('ok');q.type==='choice'&&$$('#qAns .opt').forEach(b=>b.disabled=true);
+  let extra='';if(boss){const dmg=crit?2:1;Q.hp=Math.max(0,Q.hp-dmg);const fo=$('#qFoe');fo.classList.remove('hit');void fo.offsetWidth;fo.classList.add('hit');drawFoe();extra=crit?` <b>Combo critical hit (${S.st.streak} in a row)! −2</b>`:' Hit! −1';tone(140,.2,'sawtooth',.06);tone(90,.25,'sawtooth',.06,.08)}
+  fb.className='fb ok';fb.innerHTML=`<b>${pick(['Correct!','Brilliant!','Spot on!','Nailed it!','Sharp thinking!'])}</b> +${xp} XP${extra}<br>${esc(q.explain)}`;
   const rc=el.getBoundingClientRect();burst(rc.left+rc.width/2,rc.top+rc.height/2,first?30:14);chime(first?[659,880,1175]:[659,880]);$('#qHint').classList.add('hidden');showNext();checkAch();save()}
  else{Q.tries++;S.st.streak=0;if(Q.tries===1){sk.total++;sk.up=0;sk.down++;if(sk.down>=2&&sk.lv>1){sk.lv--;sk.down=0}}
   el.classList.remove('no');void el.offsetWidth;el.classList.add('no');q.type==='choice'&&(el.disabled=true);tone(160,.18,'sawtooth',.05);$('#qCombo').textContent='';
   if(boss){if(S.shop.shields>0){S.shop.shields--;toast('🛡️ Your shield charm absorbs the blow!')}else{Q.hearts--;Q.lost++}drawFoe();if(Q.hearts<=0){Q.done=true;S.st.ans++;save();setTimeout(()=>{const b=FL().boss;talk(b[0],'YOU RETREAT',b[1],'Ha! Come back when you have thought harder. (Catch your breath. The boss recovers, but you keep all the XP you earned. A shield charm from the shop can help.)')},700);return}}
-  const lim=Q.kind==='chest'?2:3;
+  const lim=Q.kind==='chest'?(S.shop.pet==='pet2'?3:2):3;
   if(!boss&&Q.tries>=lim){Q.done=true;S.st.ans++;Q.res[Q.qi]=0;fb.className='fb no';fb.innerHTML=`<b>The answer was ${esc(q.type==='lock'?q.answer.split('').join(' '):q.answer)}.</b><br>${esc(q.explain)}`;q.type==='choice'&&$$('#qAns .opt').forEach(b=>{b.disabled=true;b.textContent===q.answer&&b.classList.add('ok')});$('#qHint').classList.add('hidden');showNext();save()}
   else{fb.className='fb no';fb.innerHTML=boss?`<b>Wrong!</b> ${esc(FL().boss[1])} strikes back. Try again.`:`<b>Not quite.</b> ${Q.tries>=2&&q.hint?'Hint: '+esc(q.hint):'Have another go.'}`;if(q.type==='num'){Q.buf='';setTimeout(showBuf,350)}}
   save()}}
@@ -814,7 +811,7 @@ function advance(){if(!Q||!Q.done)return;const f=FL();
  if(Q.kind==='boss'){if(Q.hp>0){Q.qi++;nextQ();return}S.fl.boss=1;S.st.boss++;Q.lost||S.st.flawless++;S.best=Math.max(S.best,S.depth+1);const {rel,dupe}=rollRelic(Math.random()<.5?'epic':'rare'),gems=50+10*cycle();gainGems(gems+(dupe?RARITY[rel.rar].g:0));gainXP(100);save();checkAch();showLoot({eye:'BOSS DEFEATED!',title:`${f.boss[1]} is beaten!`,rel,dupe,gains:[`+${gems} 💎`,'+100 XP','⬇️ Stairs revealed'],big:true});return}
  if(Q.kind==='chest'){if(Q.res[0]){S.fl.ch.push(Q.ix);S.st.chests++;const gems=rint(8,16)+2*S.depth;let got=null;if(Math.random()<.4)got=rollRelic();gainGems(gems+(got&&got.dupe?RARITY[got.rel.rar].g:0));save();checkAch();showLoot({eye:'CHEST OPENED',title:got?'Treasure inside!':'A pile of gems!',rel:got&&got.rel,dupe:got&&got.dupe,gains:[`+${gems} 💎`,`+${Q.xp} XP`],plain:!got})}else{closeM();toast('🧰 The chest stays shut','Come back and try a new riddle')}return}
  if(Q.qi<Q.n-1){Q.qi++;nextQ();return}
- const solved=Q.res.filter(Boolean).length,firsts=Q.res.filter(r=>r===1).length,was=S.fl.g[Q.ix],gd=f.guardians[Q.ix];
+ const solved=Q.res.filter(Boolean).length,firsts=Q.res.filter(r=>r===1).length,was=S.fl.g[Q.ix],gd=f.guardians[Q.ix];firsts===4&&S.st.perfect++;
  if(solved<3){talk(gd[0],'TRIAL NOT PASSED',gd[1],`You solved ${solved} of 4. So close! You keep the ${Q.xp} XP. Come back and try again whenever you like.`);return}
  if(!was){S.fl.g[Q.ix]=1;const {rel,dupe}=rollRelic(firsts===4?'rare':'common'),gems=12+4*S.depth+(firsts===4?10:0);gainGems(gems+(dupe?RARITY[rel.rar].g:0));save();checkAch();const n=S.fl.g.filter(Boolean).length;showLoot({eye:firsts===4?'PERFECT TRIAL!':'TRIAL PASSED',title:`${gd[1]}’s sigil is yours`,rel,dupe,gains:[`🔶 Sigil ${n} of 4`,`+${gems} 💎`,`+${Q.xp} XP`],note:n>=4?'You hold all four sigils. Find the sealed door!':''})}
  else{const gems=5+S.depth;let got=null;if(Math.random()<.15)got=rollRelic();gainGems(gems+(got&&got.dupe?RARITY[got.rel.rar].g:0));save();checkAch();showLoot({eye:'PRACTICE COMPLETE',title:`${solved} of 4 solved`,rel:got&&got.rel,dupe:got&&got.dupe,gains:[`+${gems} 💎`,`+${Q.xp} XP`],plain:!got})}hud()}

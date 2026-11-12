@@ -19,7 +19,7 @@ The whole game is a single HTML file. No install, no accounts, no ads, no tracki
 1. **Explore** a maze-like dungeon floor by torchlight. A compass arrow points to the next goal and a map fills in as you go.
 2. **Take the guardians' trials.** Each floor has four guardians. Answer at least three of their four questions to win a sigil.
 3. **Unseal the door.** Four sigils open the boss chamber.
-4. **Beat the boss.** It has 6 health and you have 3 hearts. Fast first-try answers land critical hits, and the final blow is always a combination lock.
+4. **Beat the boss.** It has 6 health and you have 3 hearts. First-try answers on a streak of 3 or more land critical hits, and the final blow is always a combination lock.
 5. **Descend.** After the dragon, the dungeon begins again, deeper and harder.
 
 | Floor | Subject |
@@ -46,12 +46,12 @@ Each subject has its own adaptive level from 1 to 6. It moves up after three fir
 | Science | Space, forces, the human body, materials and states of matter, rocks, ecosystems, chemistry basics, New Zealand wildlife |
 | Words & World | Tricky spellings, anagrams, vocabulary, word roots, riddles, grammar, geography, te reo Māori |
 
-Maths and many logic answers are typed on a number pad rather than picked from a list, so guessing doesn't work. Every question has a hint and an explanation.
+Maths and many logic answers are typed on a number pad rather than picked from a list, so guessing doesn't work. Every question has a hint and an explanation, and there is no time limit.
 
 ## Things to collect
 
 - **40 relics** in four rarities (common, rare, epic, legendary), each carrying a true fact
-- **30 trophies** for streaks, speed, locks cracked, bosses beaten and more
+- **30 trophies** for streaks, perfect trials, locks cracked, bosses beaten and more
 - **15 rune stones** that fill a lore codex
 - **Gems** to spend at the Goblin Market on lanterns, shield charms and four animal companions, each with a perk
 - **XP levels** with ranks from Torch Bearer to Legend of Emberdeep
