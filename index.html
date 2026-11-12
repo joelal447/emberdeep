@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#120d1f">
+<title>Emberdeep: The Riddle Vaults</title>
+<style>
+:root{--ink:#f3e9d2;--dim:#b9a98c;--bg:#120d1f;--card:#1d1630;--card2:#271d40;--gold:#e9b955;--ember:#ff8a3c;--line:#4a3a6b;--good:#6fe0a0;--bad:#ff6b7a;--sj:#e9b955;font-family:ui-rounded,"Arial Rounded MT Bold","Avenir Next","Trebuchet MS",system-ui,sans-serif;color:var(--ink)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);overscroll-behavior:none;touch-action:none;user-select:none;-webkit-user-select:none}
+button{font:inherit;color:inherit;cursor:pointer}
+.serif{font-family:"Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block;background:#000}
+#fx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:60}
+.hidden{display:none!important}
+/* HUD */
+.hud{position:fixed;z-index:5;display:flex;gap:8px;align-items:flex-start}
+.hud.tl{top:calc(10px + env(safe-area-inset-top));left:10px}
+.hud.tr{top:calc(10px + env(safe-area-inset-top));right:10px;align-items:center}
+.plate{background:linear-gradient(#2a2046ee,#1a1330ee);border:2px solid var(--gold);border-radius:14px;padding:7px 12px;box-shadow:0 6px 18px #0009,inset 0 1px 0 #ffffff22}
+.plate small{display:block;color:var(--gold);letter-spacing:2px;font-size:10px;font-weight:700}
+.plate strong{font-size:16px}
+.sigils{display:flex;gap:5px;margin-top:4px}
+.sigils i{width:14px;height:14px;border-radius:4px;transform:rotate(45deg);border:2px solid #6d5a94;background:#2b2146;transition:.3s}
+.sigils i.on{background:var(--gold);border-color:#fff3c4;box-shadow:0 0 8px var(--gold)}
+.pill{display:flex;align-items:center;gap:6px;font-weight:700;font-size:16px}
+.pill.pop{animation:pop .4s}
+@keyframes pop{40%{transform:scale(1.2)}}
+.lvl{display:flex;align-items:center;gap:8px;min-width:120px}
+.lvl b{width:30px;height:30px;border-radius:50%;background:radial-gradient(#ffd98a,#d08a2a);color:#3a2206;display:grid;place-items:center;font-size:14px;box-shadow:0 0 0 2px #fff3c4}
+.lvl .bar{flex:1;height:8px;border-radius:5px;background:#3a2d5c;overflow:hidden;min-width:60px}
+.lvl .bar i{display:block;height:100%;background:linear-gradient(90deg,#ff8a3c,#ffd257);width:0;transition:width .5s}
+.lvl span{font-size:10px;color:var(--dim);display:block;line-height:1.1}
+.rbtn{width:40px;height:40px;border-radius:50%;background:linear-gradient(#2a2046ee,#1a1330ee);border:2px solid var(--gold);font-size:17px}
+.bar5{position:fixed;z-index:5;left:50%;bottom:calc(10px + env(safe-area-inset-bottom));transform:translateX(-50%);display:flex;gap:6px;padding:6px;border-radius:18px;background:#120d1fd9;border:2px solid var(--line)}
+.bar5 button{background:linear-gradient(#34295a,#231a3d);border:2px solid #57457f;border-radius:12px;padding:8px 13px;font-weight:700;font-size:14px;white-space:nowrap;position:relative}
+.bar5 button:hover{border-color:var(--gold)}
+.bar5 em{position:absolute;top:-7px;right:-5px;background:var(--ember);color:#fff;border-radius:10px;font-style:normal;font-size:10px;padding:1px 6px}
+#prompt{position:fixed;z-index:5;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#120d1fe6;border:2px solid var(--gold);border-radius:16px;padding:9px 16px;display:flex;gap:10px;align-items:center;box-shadow:0 0 0 6px #e9b95522,0 10px 24px #000a;max-width:92vw}
+#prompt span{font-size:26px}#prompt b{display:block}#prompt small{color:var(--dim)}
+#toasts{position:fixed;z-index:70;top:calc(64px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);display:grid;gap:8px;pointer-events:none;width:min(92vw,460px)}
+.toast{background:linear-gradient(135deg,#3a2a66,#231a3d);border:2px solid var(--gold);border-radius:14px;padding:10px 16px;font-weight:700;text-align:center;animation:tin .35s cubic-bezier(.2,1.4,.4,1),tout .4s 3s forwards;box-shadow:0 10px 24px #000a}
+.toast.ach{border-color:#ffd257;background:linear-gradient(135deg,#6a4a12,#3a2a0a)}
+.toast small{display:block;color:var(--dim);font-weight:400}
+body.mo #toasts{top:auto;bottom:calc(10px + env(safe-area-inset-bottom))}
+@keyframes tin{from{opacity:0;transform:translateY(-14px) scale(.9)}}@keyframes tout{to{opacity:0;transform:translateY(-10px)}}
+/* modals */
+.modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:14px;background:radial-gradient(#120d1f99,#07050dee);backdrop-filter:blur(3px);overflow:auto}
+.card{width:min(680px,100%);max-height:calc(100dvh - 28px);overflow:auto;background:linear-gradient(var(--card2),var(--card));border:3px solid var(--gold);border-radius:22px;padding:22px 24px;box-shadow:0 0 0 6px #e9b95520,0 30px 60px #000c;position:relative;animation:cin .35s cubic-bezier(.2,1.3,.4,1);touch-action:pan-y}
+.card.wide{width:min(900px,100%)}
+@keyframes cin{from{opacity:0;transform:translateY(20px) scale(.95)}}
+.x{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:50%;background:#3a2d5c;border:2px solid #6d5a94;font-size:16px;z-index:2}
+h1,h2,h3{margin:0;font-family:"Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif}
+.eyebrow{color:var(--gold);letter-spacing:3px;font-size:11px;font-weight:700;margin:0 0 4px}
+.btn{background:linear-gradient(#ffb04a,#e0701f);color:#2a1202;border:0;border-radius:14px;padding:13px 22px;font-weight:800;font-size:17px;box-shadow:0 5px 0 #9a4a10,0 10px 20px #0006}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #9a4a10}
+.btn.ghost{background:#34295a;color:var(--ink);box-shadow:0 5px 0 #1b1432;border:2px solid #57457f}
+.btn:disabled{filter:grayscale(1);opacity:.5}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center}
+/* welcome */
+#welcome .card{text-align:center;overflow:hidden}
+.title{font-size:clamp(44px,9vw,78px);line-height:.95;letter-spacing:2px;background:linear-gradient(#fff1c4,#ffb04a 55%,#d2541a);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 4px 14px #ff8a3c66)}
+.sub{letter-spacing:8px;color:var(--gold);font-size:13px;margin:6px 0 14px}
+.flame{font-size:58px;animation:flick 1.6s ease-in-out infinite;display:inline-block;filter:drop-shadow(0 0 22px #ff8a3c)}
+@keyframes flick{50%{transform:scale(1.08) rotate(-3deg)}}
+#nameIn{display:block;margin:14px auto;width:min(100%,300px);padding:12px 14px;border-radius:12px;border:2px solid #57457f;background:#120d1f;color:var(--ink);font:inherit;font-size:18px;text-align:center;user-select:text;-webkit-user-select:text}
+.lede{color:var(--dim);max-width:480px;margin:0 auto;line-height:1.5}
+/* talk */
+.talk{display:flex;gap:16px;align-items:center}
+.portrait{flex:0 0 auto;width:112px;height:112px;border-radius:24px;background:radial-gradient(#4a3a7a,#1a1330);border:3px solid var(--gold);display:grid;place-items:center;font-size:66px;box-shadow:0 0 24px var(--glow,#e9b95566)}
+.talk p{line-height:1.5;margin:6px 0 0;font-size:17px}
+/* quiz */
+#quiz .card{border-color:var(--sj);box-shadow:0 0 0 6px color-mix(in srgb,var(--sj) 18%,transparent),0 30px 60px #000c}
+.qtop{display:flex;align-items:center;gap:10px;margin-right:40px}
+.chip{background:var(--sj);color:#1a1202;font-weight:800;border-radius:10px;padding:4px 10px;font-size:12px;letter-spacing:1px}
+.pips{display:flex;gap:5px;margin-left:auto}
+.pips i{width:11px;height:11px;border-radius:50%;background:#3a2d5c}.pips i.d{background:var(--good)}.pips i.n{background:var(--sj);box-shadow:0 0 0 3px #ffffff22}.pips i.m{background:var(--bad)}
+.combo{font-weight:800;color:#ffb04a}
+.timer{height:5px;border-radius:3px;background:#3a2d5c;margin:10px 0 0;overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ffd257,#ff8a3c);transform-origin:left}
+.foe{display:flex;align-items:center;gap:12px;background:#120d1f;border:2px solid #57457f;border-radius:16px;padding:8px 12px;margin-top:12px}
+.foe .face{font-size:46px;transition:transform .2s}.foe.hit .face{animation:hit .4s}.foe .grow{flex:1}
+@keyframes hit{20%{transform:translateX(-8px) rotate(-8deg);filter:brightness(3)}60%{transform:translateX(6px)}}
+.hp{display:flex;gap:4px;margin-top:4px}.hp i{flex:1;height:10px;border-radius:4px;background:#e0443f;max-width:34px;transition:.3s}.hp i.off{background:#3a2d5c}
+.hearts{font-size:20px;letter-spacing:2px}
+.qprompt{font-family:"Palatino Linotype",Palatino,Georgia,serif;font-size:clamp(20px,3.4vw,28px);line-height:1.3;margin:16px 0 6px;text-align:center;white-space:pre-line;font-weight:700}
+#qvis:empty{display:none}#qvis{display:flex;justify-content:center;margin:8px 0}
+.abc{display:grid;grid-template-columns:repeat(13,1fr);gap:3px;max-width:420px;width:100%}
+.abc i{font-style:normal;background:#120d1f;border:1px solid #57457f;border-radius:5px;text-align:center;font-size:13px;padding:2px 0;color:var(--gold);font-weight:700}
+.ans{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px auto 0;max-width:560px}
+.opt{background:#120d1f;border:2px solid #57457f;border-radius:14px;padding:13px 12px;font-weight:700;font-size:17px;min-height:56px;text-align:center;transition:.12s;animation:oin .3s backwards}
+.opt:nth-child(2){animation-delay:.05s}.opt:nth-child(3){animation-delay:.1s}.opt:nth-child(4){animation-delay:.15s}
+@keyframes oin{from{opacity:0;transform:translateY(8px)}}
+.opt:hover:not(:disabled){border-color:var(--sj);transform:translateY(-2px)}
+.opt.ok{background:#17402c;border-color:var(--good);color:#d6ffe6;animation:pop .4s}
+.opt.no{background:#401722;border-color:var(--bad);opacity:.55;animation:shake .3s}
+.opt.out{opacity:.3}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.typed{display:grid;gap:10px;justify-items:center;margin-top:12px}
+.disp{min-width:200px;min-height:56px;padding:8px 18px;border-radius:14px;background:#120d1f;border:2px solid var(--sj);font-size:30px;font-weight:800;text-align:center;letter-spacing:2px;font-variant-numeric:tabular-nums}
+.disp.no{animation:shake .3s;border-color:var(--bad)}.disp.ok{border-color:var(--good);background:#17402c}
+.disp small{font-size:16px;color:var(--dim);margin-left:6px;letter-spacing:0}
+input.disp{color:var(--ink);font:inherit;font-size:26px;font-weight:800;text-transform:uppercase;width:min(100%,340px);user-select:text;-webkit-user-select:text;outline:0}
+.pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:min(100%,420px)}
+.pad button{background:#34295a;border:2px solid #57457f;border-radius:10px;padding:9px 0;font-weight:800;font-size:18px}
+.pad button.go{grid-column:span 2;background:linear-gradient(#ffb04a,#e0701f);color:#2a1202;border:0}
+.clues{display:grid;gap:6px;margin:10px auto;max-width:520px}
+.clue{display:flex;align-items:center;gap:10px;background:#120d1f;border:1px solid #57457f;border-radius:12px;padding:6px 10px;text-align:left;font-size:14px}
+.clue b{display:flex;gap:4px}.clue b i{font-style:normal;width:30px;height:34px;border-radius:7px;background:linear-gradient(#f3e9d2,#cdbb93);color:#2a1a06;display:grid;place-items:center;font-size:19px;font-weight:800}
+.dials{display:flex;gap:10px;justify-content:center}
+.dial{display:grid;gap:4px;justify-items:center}
+.dial button{width:54px;height:30px;border-radius:9px;background:#34295a;border:2px solid #57457f;font-size:13px}
+.dial b{width:54px;height:60px;border-radius:12px;background:linear-gradient(#f3e9d2,#cdbb93);color:#2a1a06;display:grid;place-items:center;font-size:34px;box-shadow:inset 0 -5px 0 #0002}
+.dial.cur b{box-shadow:0 0 0 3px var(--sj),inset 0 -5px 0 #0002}
+.qfoot{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:14px;flex-wrap:wrap}
+.hintb{background:transparent;border:2px dashed #6d5a94;border-radius:12px;padding:8px 14px;color:var(--dim);font-weight:700}
+.fb{text-align:center;margin-top:12px;min-height:24px;line-height:1.4}
+.fb.ok{color:#bfffd8}.fb.no{color:#ffc2c8}.fb.hint{color:#ffe2a8}
+.fb b{font-size:18px}
+/* loot */
+#loot .card{text-align:center;overflow:hidden}
+.rays{position:absolute;inset:-40%;background:conic-gradient(from 0deg,transparent,var(--rc,#e9b955) 6%,transparent 12%,transparent 25%,var(--rc,#e9b955) 31%,transparent 37%,transparent 50%,var(--rc,#e9b955) 56%,transparent 62%,transparent 75%,var(--rc,#e9b955) 81%,transparent 87%);opacity:.14;animation:spin 14s linear infinite;pointer-events:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.relic{position:relative;width:150px;height:150px;margin:8px auto;border-radius:30px;display:grid;place-items:center;font-size:84px;background:radial-gradient(#3a2d5c,#120d1f);border:4px solid var(--rc,#e9b955);box-shadow:0 0 40px var(--rc,#e9b955);animation:flip .7s cubic-bezier(.2,1.3,.4,1)}
+@keyframes flip{from{transform:rotateY(180deg) scale(.3);opacity:0}}
+.rar{font-weight:800;letter-spacing:3px;font-size:12px;color:var(--rc)}
+.fact{background:#120d1f;border-left:4px solid var(--rc,var(--gold));border-radius:10px;padding:10px 14px;margin:12px auto;max-width:480px;text-align:left;line-height:1.45;color:#eadfc6}
+.gains{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:10px 0}
+.gains span{background:#120d1f;border:2px solid #57457f;border-radius:12px;padding:6px 12px;font-weight:800}
+/* panels */
+.tabs{display:flex;gap:6px;margin:10px 0 14px;flex-wrap:wrap}
+.tabs button{background:#120d1f;border:2px solid #57457f;border-radius:10px;padding:6px 12px;font-weight:700;font-size:13px}.tabs button.on{border-color:var(--gold);color:var(--gold)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px}
+.cell{background:#120d1f;border:2px solid var(--rc,#57457f);border-radius:14px;padding:10px 6px;text-align:center;font-size:12px;font-weight:700;min-height:104px}
+.cell span{display:block;font-size:38px;line-height:1.2}.cell.lock{opacity:.45;border-style:dashed}.cell.lock span{filter:grayscale(1) brightness(.3)}
+.cell small{display:block;color:var(--rc);font-size:9px;letter-spacing:1px}
+.list{display:grid;gap:8px}
+.item{display:flex;gap:12px;align-items:center;background:#120d1f;border:2px solid #57457f;border-radius:14px;padding:10px 12px}
+.item .ic{font-size:30px;width:40px;text-align:center}.item .grow{flex:1}.item small{color:var(--dim);display:block}
+.item.done{border-color:var(--gold)}.item.locked{opacity:.5}
+.meter{height:9px;border-radius:5px;background:#3a2d5c;overflow:hidden;margin-top:5px}.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--sj),#fff3c4)}
+.mapwrap{display:grid;place-items:center}#bigmap{width:min(100%,460px);aspect-ratio:1;border-radius:14px;border:2px solid #57457f;background:#07050d}
+.help{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:12px 0}
+.help div{background:#120d1f;border-radius:12px;padding:10px;text-align:center}.help b{display:block;color:var(--gold)}
+/* touch */
+#joy,#tjump,#tact{display:none}
+@media (pointer:coarse),(max-width:720px){
+ #joy{display:block;position:fixed;z-index:6;left:16px;bottom:calc(78px + env(safe-area-inset-bottom));width:130px;height:130px;border-radius:50%;background:radial-gradient(#ffffff26,#00000055);border:3px solid #e9b955aa;touch-action:none}
+ #joy i{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px;border-radius:50%;background:radial-gradient(#ffe2a8,#d08a2a);box-shadow:0 4px 10px #0008;pointer-events:none}
+ #tjump,#tact{display:block;position:fixed;z-index:6;border-radius:50%;border:3px solid #fff3c4;font-weight:800;color:#2a1202}
+ #tact{right:18px;bottom:calc(84px + env(safe-area-inset-bottom));width:80px;height:80px;background:radial-gradient(#ffd98a,#e0701f);font-size:13px}
+ #tjump{right:108px;bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;background:radial-gradient(#bfe8ff,#4a8fd0);font-size:11px}
+ .bar5{gap:3px;padding:4px;width:calc(100% - 12px);justify-content:space-between}.bar5 button{padding:8px 4px;font-size:11px;flex:1}.bar5 button b{display:none}
+ .plate strong{font-size:13px}.lvl{min-width:96px}#prompt{bottom:calc(176px + env(safe-area-inset-bottom))}
+ .card{padding:16px 14px}.portrait{width:80px;height:80px;font-size:46px}.opt{font-size:15px;padding:10px 8px}.pad button{padding:11px 0}
+ .hide-s{display:none}
+}
+@media (max-height:560px){.relic{width:90px;height:90px;font-size:50px}.flame{font-size:34px}.qprompt{margin:8px 0 2px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important}}
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Emberdeep dungeon view. Move with W A S D or the arrow keys, press E to interact."></canvas>
+<canvas id="fx" aria-hidden="true"></canvas>
+
+<div class="hud tl" id="hudL">
+  <div class="plate"><small id="hDepth">FLOOR 1</small><strong id="hFloor" class="serif">Mosslight Crypt</strong><div class="sigils" id="hSig" role="img"></div></div>
+</div>
+<div class="hud tr" id="hudR">
+  <div class="plate pill" id="hGems">💎 <span>0</span></div>
+  <div class="plate lvl"><b id="hLv">1</b><div style="flex:1"><span id="hRank">Torch Bearer</span><div class="bar"><i id="hXp"></i></div></div></div>
+  <button class="rbtn" id="soundBtn" aria-label="Sound">🔊</button>
+  <button class="rbtn hide-s" id="helpBtn" aria-label="Help">?</button>
+</div>
+<div id="prompt" class="hidden"><span id="pIcon">🧙</span><div><b id="pName"></b><small id="pHow"></small></div></div>
+<nav class="bar5" id="bar5">
+  <button data-p="relics">🎒 <b>Relics</b><em id="nRel" class="hidden">0</em></button>
+  <button data-p="trophies">🏆 <b>Trophies</b></button>
+  <button data-p="map">🗺️ <b>Map</b></button>
+  <button data-p="shop">🛒 <b>Shop</b></button>
+  <button data-p="codex">📜 <b>Codex</b></button>
+</nav>
+<div id="joy"><i id="joyK"></i></div>
+<button id="tjump">JUMP</button>
+<button id="tact">USE</button>
+<div id="toasts" aria-live="polite"></div>
+
+<section class="modal" id="welcome"><div class="card">
+  <div class="flame">🔥</div>
+  <h1 class="title">EMBERDEEP</h1>
+  <p class="sub">THE RIDDLE VAULTS</p>
+  <p class="lede">Five floors of twisting dungeon lie below. Out-think the guardians, crack the locks, collect legendary relics, and face the dragon at the bottom.</p>
+  <input id="nameIn" maxlength="16" placeholder="Adventurer name" autocomplete="off">
+  <button class="btn" id="beginBtn">Light the torch 🔥</button>
+  <p class="lede" style="font-size:12px;margin-top:14px">Progress saves on this device only.</p>
+</div></section>
+
+<section class="modal hidden" id="talk"><div class="card">
+  <button class="x" data-close aria-label="Close">✕</button>
+  <div class="talk"><div class="portrait" id="tFace"></div><div><p class="eyebrow" id="tKind"></p><h2 id="tName"></h2><p id="tText"></p></div></div>
+  <div class="row" style="margin-top:18px"><button class="btn ghost" data-close id="tLater">Not yet</button><button class="btn" id="tGo">Begin</button></div>
+</div></section>
+
+<section class="modal hidden" id="quiz"><div class="card">
+  <button class="x" id="qClose" aria-label="Leave">✕</button>
+  <div class="qtop"><span class="chip" id="qChip"></span><span class="combo" id="qCombo"></span><div class="pips" id="qPips"></div></div>
+  <div class="timer"><i id="qTimer"></i></div>
+  <div class="foe hidden" id="qFoe"><div class="face" id="fFace"></div><div class="grow"><b id="fName"></b><div class="hp" id="fHp"></div></div><div class="hearts" id="fHearts"></div></div>
+  <div class="qprompt" id="qPrompt"></div>
+  <div id="qvis"></div>
+  <div id="qAns"></div>
+  <div class="fb" id="qFb" aria-live="polite"></div>
+  <div class="qfoot"><button class="hintb" id="qHint">💡 Hint</button><button class="btn hidden" id="qNext">Next →</button></div>
+</div></section>
+
+<section class="modal hidden" id="loot"><div class="card">
+  <div class="rays"></div>
+  <p class="eyebrow" id="lEye"></p><h2 id="lTitle"></h2>
+  <div id="lBody"></div>
+  <button class="btn" id="lOk" style="margin-top:10px">Onward!</button>
+</div></section>
+
+<section class="modal hidden" id="panel"><div class="card wide">
+  <button class="x" data-close aria-label="Close">✕</button>
+  <p class="eyebrow" id="pEye"></p><h2 id="pTitle"></h2>
+  <div id="pBody"></div>
+</div></section>
+<script>
+'use strict';
+/* ================= Emberdeep — content and question engine ================= */
+const TAU=Math.PI*2,$=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const clamp=(v,a,b)=>v<a?a:v>b?b:v,rint=(a,b)=>a+Math.floor(Math.random()*(b-a+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>Number(n).toLocaleString('en-NZ');
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const TOUCH=matchMedia('(pointer: coarse)').matches;
+
+const SUBJECTS={maths:{name:'Maths',icon:'🔢',col:'#ff8a5c'},logic:{name:'Logic',icon:'🧩',col:'#5cc8ff'},science:{name:'Science',icon:'🧪',col:'#6fe0a0'},words:{name:'Words & World',icon:'📜',col:'#d9a2ff'}};
+const FLOORS=[
+ {name:'Mosslight Crypt',sub:'maths',blurb:'Old stones that love to count.',fog:[10,18,16],glow:'#7dffb0',scale:[196,233.08,261.63,293.66,349.23,392,466.16,523.25],
+  guardians:[['🧙','Numbra the Counter','I have counted every stone in this crypt. Twice. Let us see if your numbers are as sharp as mine.'],['🗿','The Stone Abacus','GRRRIND. Sums. I. Like. Sums. Do. You?'],['🐸','Toadmaster Tally','Ribbit! One fly, two fly, three fly, four. Answer my sums and I shall croak no more.'],['👻','The Ghost of Googol','Oooooh! I was haunting numbers before you were born. Big ones. REALLY big ones.']],
+  boss:['🧌','The Troll of Ten Thousand','NOBODY passes my bridge without paying the toll. And the toll is ARITHMETIC!']},
+ {name:'Cogwork Halls',sub:'logic',blurb:'Every gear turns for a reason.',fog:[20,13,8],glow:'#ffc46b',scale:[220,246.94,277.18,329.63,369.99,440,493.88,554.37],
+  guardians:[['🤖','Brasswhistle','BEEP. Pattern detected: you are an adventurer. Query: can you detect patterns too?'],['🦉','The Tick-Tock Owl','Whoo, whoo, whooo solves the puzzle? Not many. Think before you blink.'],['🧚','Cipher Sprite','Psst! Everything down here is written in code. Crack it and the sigil is yours.'],['🐭','Locksmith Mole','I have dug under a thousand locks. The trick is never force. The trick is clues.']],
+  boss:['🦁','The Clockwork Sphinx','Answer my riddles of reason, small one, or wind my gears for a hundred years.']},
+ {name:'Glowcap Caverns',sub:'science',blurb:'Where the mushrooms light the way.',fog:[8,10,26],glow:'#6fe6ff',scale:[174.61,207.65,233.08,261.63,311.13,349.23,415.3,466.16],
+  guardians:[['🍄','The Sporeling Sage','Welcome, warm-blooded one. Down here we study how the world really works.'],['🦇','Echo the Bat','I see with sound! Squeak a right answer and I will hear it bounce back.'],['🐌','Professor Snailsworth','No need to rush. Good science is slow, careful and curious. Shall we begin?'],['💎','The Crystal Golem','I grew for ten thousand years, one atom at a time. Tell me what you know of nature.']],
+  boss:['🕷️','Queen Silkspinner','My web catches every careless guess. Only true knowledge slips through.']},
+ {name:'The Rune Library',sub:'words',blurb:'A million words, and some of them bite.',fog:[20,10,22],glow:'#e7a8ff',scale:[207.65,233.08,261.63,311.13,349.23,415.3,466.16,523.25],
+  guardians:[['🐈‍⬛','Inkpaw','Mrrow. I knocked every book off these shelves and read them on the way down.'],['🧝','The Elf Scribe','Words are the oldest magic. Spell them well and doors will open.'],['🧛','Count Syllable','One syllable! Two syllables! THREE syllables! Ah-ah-ah! I do love to count them.'],['🦜','Polyglot the Parrot','Kia ora! Hello! Bonjour! I speak in many tongues. Do you know your world?']],
+  boss:['💀','The Lexicon Lich','I have swallowed every dictionary ever written. Misspell one word and you are MINE.']},
+ {name:'The Dragon’s Vault',sub:'mix',blurb:'Everything you have learned, all at once.',fog:[26,8,6],glow:'#ff7a45',scale:[146.83,174.61,196,220,261.63,293.66,349.23,392],
+  guardians:[['🧞','The Genie of Guesses','No wishes today. Only questions. Three right answers would have been easier, but I prefer four.'],['🤺','Sir Cumference','En garde! I guard the round table. Yes, that is my real name. No, it is not funny.'],['🐲','Cinder the Hatchling','Mum says nobody gets past unless they are REALLY clever. Are you really clever?'],['🧜','The Tide Oracle','All rivers of knowledge run down to this vault. Show me how deep yours goes.']],
+  boss:['🐉','Emberclaw the Ancient','So. A tiny thinker dares the deep. Answer well, little spark, or be toasted.']}];
+
+const RARITY={common:{n:'Common',c:'#b8c4d6',w:60,g:5},rare:{n:'Rare',c:'#5cc8ff',w:27,g:12},epic:{n:'Epic',c:'#c77dff',w:10,g:30},legendary:{n:'Legendary',c:'#ffb938',w:3,g:80}};
+const RELICS=[
+['c1','🧮','Counting Beads','common','The abacus has helped people calculate for thousands of years, long before calculators.'],
+['c2','🕯️','Everburn Candle','common','The hottest part of a candle flame is the blue part near the bottom, not the bright yellow tip.'],
+['c3','🧲','Lodestone Shard','common','Lodestone is a naturally magnetic rock. The first compasses were made from it.'],
+['c4','🪙','Coin of Halves','common','Flip a fair coin and the chance of heads is 1 in 2 every single time, no matter what came before.'],
+['c5','🦴','Fossil Fang','common','The giant shark megalodon had teeth longer than your hand: more than 17 cm.'],
+['c6','🐚','Spiral Shell','common','A nautilus grows its shell in a spiral, adding a bigger chamber each time it outgrows the last.'],
+['c7','📜','Scroll of Palindromes','common','A palindrome reads the same backwards: level, kayak, racecar.'],
+['c8','🔔','Echo Bell','common','Sound travels through air at about 340 metres every second.'],
+['c9','🧪','Bubbling Flask','common','Mix baking soda with vinegar and you make bubbles of carbon dioxide gas.'],
+['c10','🍄','Glowcap','common','Some real fungi glow in the dark. Living light is called bioluminescence.'],
+['c11','🪶','Moa Feather','common','Moa were giant flightless birds of Aotearoa. The tallest could reach about 3.6 metres with its neck stretched up.'],
+['c12','🧭','True Compass','common','A compass points to magnetic north, which is not quite the same place as the North Pole.'],
+['c13','🎲','Die of Twenty','common','A 20-sided die is an icosahedron: 20 triangle faces, 30 edges and 12 corners.'],
+['c14','⏳','Sandglass','common','There are 86,400 seconds in one day.'],
+['c15','🗝️','Skeleton Key','common','People in ancient Egypt were already using wooden pin locks thousands of years ago.'],
+['c16','🕸️','Silk Thread','common','Weight for weight, spider silk is stronger than steel.'],
+['r1','🔮','Prime Orb','rare','A prime number has exactly two factors: 1 and itself. 2 is the only even prime.'],
+['r2','⚗️','Alchemist’s Still','rare','The chemical symbol for gold is Au, from its Latin name, aurum.'],
+['r3','🌋','Obsidian Blade','rare','Obsidian is volcanic glass. It forms when lava cools very quickly.'],
+['r4','🦎','Tuatara Scale','rare','Tuatara have a light-sensing “third eye” on top of their heads, and their relatives lived alongside the dinosaurs.'],
+['r5','🧊','Neverthaw Ice','rare','Water expands when it freezes. That is why ice floats.'],
+['r6','📯','Horn of Fibonacci','rare','In the Fibonacci sequence each number is the sum of the two before it: 1, 1, 2, 3, 5, 8, 13…'],
+['r7','🪞','Mirror of Symmetry','rare','A square has 4 lines of symmetry. A circle has infinitely many.'],
+['r8','💠','Hexagon Seal','rare','Bees build with hexagons because they fit together with no gaps and hold lots of honey for little wax.'],
+['r9','🌠','Meteor Chip','rare','Most shooting stars are specks of space dust no bigger than a grain of sand, burning up in the air.'],
+['r10','🗿','Rosetta Chip','rare','The Rosetta Stone carries one message in three scripts. It let scholars finally read Egyptian hieroglyphs.'],
+['r11','⚡','Bottled Lightning','rare','A lightning bolt is about five times hotter than the surface of the Sun.'],
+['r12','🎼','Octave String','rare','Halve the length of a string and it plays the same note one octave higher.'],
+['e1','👑','Crown of a Million','epic','A million seconds is about 11 and a half days. A billion seconds is nearly 32 years.'],
+['e2','🧬','Helix Charm','epic','Your DNA is shaped like a twisted ladder, called a double helix.'],
+['e3','🪐','Ring of Saturn','epic','Saturn is so light for its size that it would float in water, if you could find a big enough bath.'],
+['e4','🌀','Möbius Band','epic','A Möbius strip has only one side and only one edge. Make one with a paper strip and a half-twist.'],
+['e5','♟️','The Grain Board','epic','Put 1 grain of rice on the first square of a chessboard and double it on each square. The last square alone needs more than 9 quintillion grains.'],
+['e6','🧿','Eye of Pi','epic','Pi starts 3.14159… and its digits go on forever without ever settling into a repeating pattern.'],
+['e7','🐲','Dragonscale','epic','The Komodo dragon is the largest living lizard. It can grow to 3 metres long.'],
+['e8','🔭','Farseer Lens','epic','Starlight takes years to reach us, so when you look at the stars you are looking back in time.'],
+['l1','🌌','The Googol Stone','legendary','A googol is 1 followed by 100 zeros. That is more than the number of atoms in the whole observable universe.'],
+['l2','♾️','Infinity Loop','legendary','There is no biggest number. Whatever number you name, you can always add 1.'],
+['l3','🕳️','Pocket Black Hole','legendary','A black hole’s gravity is so strong that not even light can escape it.'],
+['l4','💎','Heart of Emberdeep','legendary','Diamond and pencil graphite are both pure carbon. Only the arrangement of the atoms is different.']
+].map(r=>({id:r[0],e:r[1],name:r[2],rar:r[3],fact:r[4]}));
+
+const CODEX=[
+['x1',0,'The -illions','Million has 6 zeros, billion 9, trillion 12, quadrillion 15, quintillion 18. Each step is a thousand times bigger.'],
+['x2',0,'Googolplex','A googolplex is 1 followed by a googol of zeros. There is not enough room in the universe to write it out.'],
+['x3',0,'The power of zero','Zero is a number in its own right. Without it we could not tell 5 from 50 from 500.'],
+['x4',1,'Caesar’s secret','Julius Caesar hid messages by shifting every letter three places along the alphabet. It is still called a Caesar cipher.'],
+['x5',1,'Counting in twos','Computers count in binary, using only 0 and 1. In binary, 101 means five.'],
+['x6',1,'Proof','In maths, a proof is an argument so watertight that it can never be wrong. Some took hundreds of years to find.'],
+['x7',2,'Glow in the dark','Glow-worms in Aotearoa’s caves make light to lure insects into their sticky threads.'],
+['x8',2,'Stalactites','Stalactites hang tight to the ceiling. Stalagmites grow up from the ground. Both grow drip by drip.'],
+['x9',2,'Atoms','Everything you can touch is made of atoms. A single grain of sand holds more atoms than there are grains of sand on a beach.'],
+['x10',3,'Where words come from','English borrows from everywhere: “tsunami” is Japanese, “robot” is Czech, and “kiwi” is te reo Māori.'],
+['x11',3,'The longest word','“Pneumonoultramicroscopicsilicovolcanoconiosis” has 45 letters. It is a lung disease caused by breathing in very fine dust.'],
+['x12',3,'Pangram','“The quick brown fox jumps over the lazy dog” uses every letter of the alphabet.'],
+['x13',4,'Dragons of the world','No dragon ever lived, but people on nearly every continent told stories about them. Dinosaur bones may have helped.'],
+['x14',4,'Hottest and coldest','The coldest anything can ever be is −273.15 °C, called absolute zero. There is no known hottest.'],
+['x15',4,'Treasure maths','Gold is so heavy that a block the size of a milk carton would weigh about 19 kilograms.']
+].map(r=>({id:r[0],fl:r[1],t:r[2],f:r[3]}));
+
+const RANKS=['Torch Bearer','Riddle Rookie','Rune Reader','Vault Scout','Code Breaker','Sigil Seeker','Lore Keeper','Dungeon Sage','Master of Keys','Arch-Thinker','Legend of Emberdeep'];
+const xpFor=lv=>100*lv*(lv+1)/2; /* total XP needed to reach level lv+1 */
+
+/* ---------------- question helpers ---------------- */
+function mc(prompt,answer,wrongs,explain,hint){answer=String(answer);const opts=[...new Set(wrongs.map(String))].filter(w=>w!==answer);return{type:'choice',prompt,answer,options:shuffle([answer,...shuffle(opts).slice(0,3)]),explain,hint}}
+function num(prompt,answer,hint,explain,unit){return{type:'num',prompt,answer:String(answer),hint,explain,unit:unit||''}}
+function txt(prompt,answer,hint,explain){return{type:'text',prompt,answer:String(answer).toUpperCase(),hint,explain}}
+const near=(n,ds)=>ds.map(d=>n+d).filter(v=>v!==n&&v>=0);
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+const roman=n=>{let out='';[[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']].forEach(([v,s])=>{while(n>=v){out+=s;n-=v}});return out};
+const isPrime=n=>{if(n<2)return false;for(let i=2;i*i<=n;i++)if(n%i===0)return false;return true};
+
+/* ---------------- MATHS ---------------- */
+const MATHS=[
+[1,1,()=>{const a=rint(2,10),b=rint(2,10);return num(`${a} × ${b} = ?`,a*b,`Count up in ${a}s, ${b} times.`,`${a} × ${b} = ${a*b}.`)}],
+[1,1,()=>{const a=rint(23,78),b=rint(12,59);return num(`${a} + ${b} = ?`,a+b,'Add the tens, then the ones.',`${a} + ${b} = ${a+b}.`)}],
+[1,1,()=>{const b=rint(12,48),a=b+rint(11,49);return num(`${a} − ${b} = ?`,a-b,'Count up from the smaller number.',`${a} − ${b} = ${a-b}.`)}],
+[1,1,()=>{const n=rint(12,49)*2;return num(`What is half of ${n}?`,n/2,'Halve the tens, then halve the ones.',`Half of ${n} is ${n/2}.`)}],
+[1,2,()=>{const q=rint(3,12),n=q*4;return num(`A treasure pile has ${n} coins. You take one quarter. How many coins do you take?`,q,'A quarter means divide by 4.',`${n} ÷ 4 = ${q}.`)}],
+[2,2,()=>{const a=rint(3,12),b=rint(3,12);return num(`${a} × ▢ = ${a*b}. What is the missing number?`,b,`How many ${a}s make ${a*b}?`,`${a} × ${b} = ${a*b}.`)}],
+[2,2,()=>{const a=rint(134,689),b=rint(115,298);return num(`${a} + ${b} = ?`,a+b,'Add hundreds, tens and ones separately.',`${a} + ${b} = ${a+b}.`)}],
+[2,3,()=>{const ds=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,4),n=+ds.join(''),ix=rint(0,2),val=ds[ix]*10**(3-ix);return num(`In the number ${fmt(n)}, what is the digit ${ds[ix]} worth?`,val,'Is it in the thousands, hundreds or tens place?',`The ${ds[ix]} is worth ${fmt(val)}.`)}],
+[2,2,()=>{const n=rint(12,98),m=pick([10,100,1000]);return num(`${n} × ${fmt(m)} = ?`,n*m,'Each zero shifts every digit one place to the left.',`${n} × ${fmt(m)} = ${fmt(n*m)}.`)}],
+[2,3,()=>{const d=pick([3,4,5,8]),k=rint(2,d-1),u=rint(2,9),m=d*u;return num(`What is ${k}/${d} of ${m}?`,k*u,`First find 1/${d} of ${m}, then multiply by ${k}.`,`1/${d} of ${m} is ${u}, so ${k}/${d} is ${k*u}.`)}],
+[2,3,()=>{const n=rint(4,49);return Math.random()<.5?num(`The crypt wall is carved with the Roman numeral ${roman(n)}. What number is it?`,n,'I = 1, V = 5, X = 10, L = 50. A smaller letter in front is subtracted.',`${roman(n)} = ${n}.`):mc(`How do you write ${n} in Roman numerals?`,roman(n),[roman(n+1),roman(n-1),roman(n+10>49?n-10:n+10),roman(n+5>49?n-5:n+5)],`${n} = ${roman(n)}.`,'I = 1, V = 5, X = 10, L = 50.')}],
+[2,3,()=>{const a=rint(4,9),b=rint(6,12),c=rint(8,25);return num(`A dragon has ${a} sacks with ${b} gems in each. It gives ${c} gems away. How many gems are left?`,a*b-c,'Multiply first, then subtract.',`${a} × ${b} = ${a*b}, and ${a*b} − ${c} = ${a*b-c}.`)}],
+[3,4,()=>{const a=rint(2,9),b=rint(2,9),c=rint(2,9);return Math.random()<.5?num(`${a} + ${b} × ${c} = ?`,a+b*c,'Multiplication comes before addition.',`${b} × ${c} = ${b*c} first, then + ${a} = ${a+b*c}.`):num(`(${a} + ${b}) × ${c} = ?`,(a+b)*c,'Do the brackets first.',`${a} + ${b} = ${a+b}, then × ${c} = ${(a+b)*c}.`)}],
+[3,4,()=>{const o=pick([['million',6],['billion',9],['trillion',12]]);return num(`How many zeros are there in one ${o[0]}?`,o[1],'A thousand has 3 zeros. Each step up adds 3 more.',`One ${o[0]} is 1 followed by ${o[1]} zeros.`)}],
+[3,4,()=>{const o=pick([['a thousand thousands','million'],['a thousand millions','billion'],['a thousand billions','trillion']]);return mc(`What is another name for ${o[0]}?`,o[1],['million','billion','trillion','quadrillion','ten thousand'],`${o[0][0].toUpperCase()+o[0].slice(1)} make one ${o[1]}.`,'Each -illion is a thousand times the one before.')}],
+[3,4,()=>{const f=pick([[1,2],[2,3],[3,4],[2,5],[3,5]]),k=rint(2,5);return num(`▢/${f[1]*k} is the same as ${f[0]}/${f[1]}. What is the missing top number?`,f[0]*k,`The bottom was multiplied by ${k}. Do the same to the top.`,`${f[0]}/${f[1]} = ${f[0]*k}/${f[1]*k}.`)}],
+[3,4,()=>{const w=rint(3,12),h=rint(3,9);return Math.random()<.5?num(`A dungeon room is ${w} m long and ${h} m wide. What is its area in square metres?`,w*h,'Area = length × width.',`${w} × ${h} = ${w*h} m².`):num(`A dungeon room is ${w} m long and ${h} m wide. How far is it to walk once all the way around the walls, in metres?`,2*(w+h),'Add all four sides.',`${w} + ${h} + ${w} + ${h} = ${2*(w+h)} m.`)}],
+[3,4,()=>{const h=rint(7,10),m=pick([15,25,40,45,50]),dur=rint(35,95),end=h*60+m+dur;return num(`A potion starts brewing at ${h}:${m} and finishes at ${Math.floor(end/60)}:${String(end%60).padStart(2,'0')}. How many minutes did it brew?`,dur,'Count on to the next hour first, then add the rest.',`It brewed for ${dur} minutes.`)}],
+[3,4,()=>{const a=rint(1,6),d=rint(a+2,a+9);return num(`It is ${a} °C in the cavern. The temperature drops by ${d} degrees. What is the temperature now?`,a-d,'Count down past zero.',`${a} − ${d} = ${a-d} °C.`)}],
+[3,4,()=>{const d=rint(3,9),q=rint(4,11),r=rint(1,d-1);return num(`${d*q+r} gold coins are shared equally between ${d} goblins. How many coins are left over?`,r,`What is the biggest multiple of ${d} that fits into ${d*q+r}?`,`${d} × ${q} = ${d*q}, leaving ${r} left over.`)}],
+[3,4,()=>{const n=rint(12,45);return num(`${n} × 11 = ?`,n*11,`Work out ${n} × 10, then add one more ${n}.`,`${n*10} + ${n} = ${n*11}.`)}],
+[3,5,()=>{const n=rint(6,15);return num(`What is ${n} squared (${n} × ${n})?`,n*n,`Squared means multiplied by itself.`,`${n} × ${n} = ${n*n}.`)}],
+[4,5,()=>{const p=pick([10,20,25,50,75]),m=rint(2,15)*20;return num(`What is ${p}% of ${m}?`,p*m/100,p===25?'25% is one quarter.':p===75?'75% is three quarters.':p===50?'50% is one half.':'10% means divide by 10.',`${p}% of ${m} is ${p*m/100}.`)}],
+[4,5,()=>{const a=rint(11,49)/10,b=rint(105,395)/100,s=Math.round((a+b)*100)/100;return num(`${a} + ${b} = ?`,s,'Line up the decimal points.',`${a} + ${b} = ${s}.`)}],
+[4,5,()=>{const ps=[23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97],cs=[21,27,33,39,49,51,57,63,69,77,81,87,91,93,99];return mc('Which of these numbers is prime?',pick(ps),shuffle(cs),'A prime has no factors except 1 and itself.','Test dividing by 3 and by 7.')}],
+[4,5,()=>{const n=pick([12,16,18,20,24,28,30,36]);let c=0;for(let i=1;i<=n;i++)n%i||c++;return num(`How many factors does ${n} have? (Count 1 and ${n} too.)`,c,'Find them in pairs that multiply to make the number.',`${n} has ${c} factors.`)}],
+[4,5,()=>{const m=rint(6,14),a=m-rint(1,4),b=m+rint(1,4),c=m-rint(1,3),d=4*m-a-b-c;return num(`Four chests hold ${a}, ${b}, ${c} and ${d} gems. What is the mean (average) number of gems?`,m,'Add them all up, then divide by 4.',`The total is ${4*m}, and ${4*m} ÷ 4 = ${m}.`)}],
+[4,6,()=>{const o=pick([[2,rint(4,10)],[3,rint(3,4)],[5,3],[10,rint(4,7)]]);return num(`What is ${o[0]} to the power of ${o[1]}? (That is ${Array(Math.min(o[1],4)).fill(o[0]).join(' × ')}${o[1]>4?' × …':''})`,o[0]**o[1],`Multiply ${o[0]} by itself, ${o[1]} times in all.`,`${o[0]} to the power ${o[1]} is ${fmt(o[0]**o[1])}.`)}],
+[4,5,()=>{const x=rint(2,9),a=rint(2,6),b=rint(1,12);return num(`A rune reads: ${a} × ▲ + ${b} = ${a*x+b}. What number is ▲?`,x,`Take away ${b} first, then divide by ${a}.`,`${a*x+b} − ${b} = ${a*x}, and ${a*x} ÷ ${a} = ${x}.`)}],
+[4,5,()=>{const u=rint(3,9);return num(`Two thieves share ${u*5} gems in the ratio 2 : 3. How many gems are in the bigger share?`,u*3,'There are 2 + 3 = 5 equal parts.',`One part is ${u}. Three parts are ${u*3}.`)}],
+[4,6,()=>mc('A googol is 1 followed by how many zeros?','100',['10','1,000','1,000,000','99'],'A googol is 1 followed by 100 zeros.','The name sounds like a famous search engine, which was named after it.')],
+[5,6,()=>{const o=pick([[2,3],[2,4],[3,4],[2,5],[3,6],[4,6]]),n=o[0]+o[1],d=o[0]*o[1],g=gcd(n,d),ans=`${n/g}/${d/g}`;return mc(`1/${o[0]} + 1/${o[1]} = ?`,ans,[`2/${o[0]+o[1]}`,`1/${d}`,`2/${d}`,`${n}/${d+1}`,`1/${o[0]+o[1]}`],`Use a common bottom number of ${d}: the answer is ${ans}.`,'You cannot just add the bottoms. Find a common denominator.')}],
+[5,6,()=>{const base=rint(2,12)*10,p=pick([10,20,50]);return num(`A sword costs ${base} gems. The price goes up by ${p}%. What is the new price?`,base+base*p/100,`Find ${p}% of ${base}, then add it on.`,`${p}% of ${base} is ${base*p/100}, so the new price is ${base+base*p/100}.`)}],
+[5,6,()=>{const a=rint(2,6),b=rint(2,6);return num(`10^${a} × 10^${b} = 10 to the power of what?`,a+b,'When you multiply powers of 10, add the little numbers.',`10^${a} × 10^${b} = 10^${a+b}.`)}],
+[5,6,()=>{const o=pick([[4,6,12],[6,8,24],[3,5,15],[6,9,18],[4,10,20],[8,12,24]]);return num(`Two bells ring together. One rings every ${o[0]} seconds, the other every ${o[1]} seconds. After how many seconds do they next ring together?`,o[2],`Find the smallest number in both the ${o[0]} and ${o[1]} times tables.`,`${o[2]} is the lowest common multiple of ${o[0]} and ${o[1]}.`)}],
+[5,6,()=>{const s=rint(3,9)*10,t=rint(2,5);return num(`A dragon flies at ${s} km per hour for ${t} hours. How many kilometres does it fly?`,s*t,'Distance = speed × time.',`${s} × ${t} = ${s*t} km.`)}],
+[5,6,()=>{const a=rint(2,6),b=rint(2,5),c=rint(2,5);return num(`A treasure chest is ${a} m long, ${b} m wide and ${c} m tall. What is its volume in cubic metres?`,a*b*c,'Volume = length × width × height.',`${a} × ${b} × ${c} = ${a*b*c} m³.`)}],
+[5,6,()=>{const n=pick([10,12,15,20]);return num(`What is 1 + 2 + 3 + … + ${n}?`,n*(n+1)/2,`Pair the first and last: 1 + ${n}, 2 + ${n-1}… Each pair makes ${n+1}.`,`${n} × ${n+1} ÷ 2 = ${n*(n+1)/2}.`)}],
+[5,6,()=>{const x=rint(2,9),a=rint(2,5),b=rint(1,6);return num(`${a} × (▲ + ${b}) = ${a*(x+b)}. What number is ▲?`,x,`Divide by ${a} first, then take away ${b}.`,`${a*(x+b)} ÷ ${a} = ${x+b}, and ${x+b} − ${b} = ${x}.`)}],
+[6,6,()=>{const x=rint(6,15),y=rint(1,x-1);return num(`Two secret numbers add up to ${x+y}. Their difference is ${x-y}. What is the bigger number?`,x,'Add the sum and the difference, then halve.',`(${x+y} + ${x-y}) ÷ 2 = ${x}.`)}],
+[6,6,()=>{const n=rint(11,20);return num(`What is the square root of ${n*n}?`,n,'Which number multiplied by itself gives this?',`${n} × ${n} = ${n*n}.`)}],
+[6,6,()=>{const n=rint(5,31),b=n.toString(2);return num(`Computers count in binary. What is binary ${b} as an ordinary number?`,n,`From the right, the places are worth 1, 2, 4, 8, 16.`,`Binary ${b} = ${n}.`)}],
+[6,6,()=>{const r=rint(1,4);let b=rint(1,5);b===r&&b++;const g=gcd(r,r+b),ans=`${r/g}/${(r+b)/g}`;return mc(`A bag holds ${r} red gem${r>1?'s':''} and ${b} blue gem${b>1?'s':''}. You pull one out without looking. What is the chance it is red?`,ans,[`${r}/${b}`,`1/${r+b+1}`,`${b}/${r+b}`,`1/${r}`,`${r}/${r+b+1}`],`${r} of the ${r+b} gems are red, so the chance is ${ans}.`,'Chance = red gems ÷ all the gems.')}],
+[6,6,()=>{const n=pick([50,100,200]);return num(`What is 1 + 2 + 3 + … + ${n}?`,n*(n+1)/2,`Pair them: 1 + ${n}, 2 + ${n-1}… There are ${n/2} pairs.`,`${n/2} × ${n+1} = ${fmt(n*(n+1)/2)}.`)}],
+[6,6,()=>mc('Which prime numbers multiply together to make 210?','2 × 3 × 5 × 7',['2 × 3 × 5 × 9','3 × 7 × 10','2 × 5 × 21','2 × 3 × 35'],'2 × 3 × 5 × 7 = 210, and all four are prime.','Every number in the answer must itself be prime.')],
+[6,6,()=>{const o=rint(3,12)*20,p=pick([25,50,20]);return num(`After a ${p}% discount, a shield costs ${o*(100-p)/100} gems. What was the original price?`,o,`${100-p}% of the original is ${o*(100-p)/100}.`,`The original price was ${o} gems.`)}]
+];
+
+/* ---------------- LOGIC ---------------- */
+function lockPuzzle(L){const all=[];for(let a=0;a<10;a++)for(let b=0;b<10;b++)for(let c=0;c<10;c++)a!==b&&b!==c&&a!==c&&all.push([a,b,c]);
+ const score=(g,s)=>{let p=0,w=0;for(let i=0;i<3;i++)g[i]===s[i]?p++:s.includes(g[i])&&w++;return p*10+w};
+ for(let t=0;t<200;t++){const sec=pick(all);let cands=all,clues=[],guard=0;
+  while(cands.length>1&&clues.length<5&&guard++<80){const g=pick(all);if(g.join('')===sec.join(''))continue;const fb=score(g,sec);if(fb>=20)continue;const nc=cands.filter(c=>score(g,c)===fb);if(nc.length<cands.length*.75){cands=nc;clues.push([g,fb])}}
+  if(cands.length===1&&clues.length>=3){const say=fb=>{const p=Math.floor(fb/10),w=fb%10,bits=[];p&&bits.push(`${p===1?'one digit is':'two digits are'} correct and in the right place`);w&&bits.push(`${w===1?'one digit is':w===2?'two digits are':'three digits are'} correct but in the wrong place`);return bits.length?bits.join(', and ')[0].toUpperCase()+bits.join(', and ').slice(1)+'.':'Nothing is correct.'};
+   return{type:'lock',prompt:'Crack the three-digit lock. All three digits are different.',answer:sec.join(''),clues:clues.map(c=>({g:c[0],t:say(c[1])})),hint:clues.some(c=>c[1]===0)?'Start with the “nothing is correct” clue and cross those digits out everywhere.':'Pick one clue and test each of its digits against the other clues.',explain:`The code was ${sec.join(' ')}.`}}}
+ return num('What is 9 × 9?',81,'Nine nines.','9 × 9 = 81.')}
+const caesar=(w,k)=>w.replace(/[A-Z]/g,c=>String.fromCharCode((c.charCodeAt(0)-65+k+26)%26+65));
+const CODEWORDS=['DRAGON','TORCH','SIGIL','VAULT','EMBER','RIDDLE','GOBLIN','WIZARD','TUNNEL','SHADOW','CRYSTAL','LANTERN','SECRET','GOLD','MAZE','KEY'];
+const ABC=`<div class="abc">${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(c=>`<i>${c}</i>`).join('')}</div>`;
+const seqQ=(arr,rule,hint)=>num(`What comes next?  ${arr.slice(0,-1).join(',  ')},  ▢`,arr[arr.length-1],hint,`${rule} The next number is ${arr[arr.length-1]}.`);
+const LOGICBANK=[
+[1,'Tom is taller than Sam. Sam is taller than Ria. Who is the shortest?','Ria',['Tom','Sam','They are the same'],'Tom > Sam > Ria, so Ria is shortest.'],
+[1,'If yesterday was Tuesday, what day is the day after tomorrow?','Friday',['Thursday','Wednesday','Saturday'],'Today is Wednesday, tomorrow Thursday, the day after is Friday.'],
+[1,'Which weighs more: a kilogram of feathers or a kilogram of gold?','They weigh the same',['The gold','The feathers','It depends on the weather'],'A kilogram is a kilogram, whatever it is made of.'],
+[1,'Which is the odd one out?','Bat',['Sparrow','Eagle','Kiwi'],'A bat is a mammal. The others are birds.'],
+[1,'Which is the odd one out?','Circle',['Triangle','Square','Pentagon'],'A circle has no corners or straight sides.'],
+[1,'Hot is to cold as up is to …','down',['high','sky','over'],'Hot and cold are opposites, and so are up and down.'],
+[1,'Kitten is to cat as tadpole is to …','frog',['fish','pond','puppy'],'A kitten grows into a cat. A tadpole grows into a frog.'],
+[2,'In a race, you overtake the runner in 2nd place. What place are you in now?','2nd',['1st','3rd','Last'],'You take their place, so you are now 2nd. First place is still ahead.'],
+[2,'Mary’s father has five daughters: Nana, Nene, Nini, Nono and … who?','Mary',['Nunu','Nina','Nana again'],'It is Mary’s father, so the fifth daughter is Mary.'],
+[2,'Which is the odd one out?','9',['2','3','7'],'9 = 3 × 3, so it is not prime. The others are.'],
+[2,'Which is the odd one out?','The Moon',['Mercury','Venus','Mars'],'The Moon is a moon. The others are planets.'],
+[2,'3 is to 9 as 5 is to …','25',['10','15','20'],'Each number is squared: 3 × 3 = 9 and 5 × 5 = 25.'],
+[2,'Square is to cube as circle is to …','sphere',['oval','cylinder','ring'],'A cube is the 3D version of a square. A sphere is the 3D version of a circle.'],
+[2,'Day is to week as month is to …','year',['hour','calendar','season'],'Days make up a week. Months make up a year.'],
+[3,'Two fathers and two sons go fishing. Each catches one fish, yet there are only three fish. How?','They are a grandfather, a father and a son',['One fish got away','Two shared a fish','One of them is lying'],'The father is both a father and a son, so there are only three people.'],
+[3,'I am an odd number. Take away one letter and I become even. What am I?','Seven',['Nine','Eleven','Three'],'Take the S from SEVEN and you get EVEN.'],
+[3,'Which is the odd one out?','48',['16','25','36'],'16, 25 and 36 are square numbers. 48 is not.'],
+[3,'A lily patch doubles in size every day. It covers the whole pond on day 30. On which day was the pond half covered?','Day 29',['Day 15','Day 20','Day 28'],'It doubles each day, so it was half the size the day before: day 29.'],
+[3,'What letter comes next?  O, T, T, F, F, S, S, …','E',['N','T','O'],'They are the first letters of One, Two, Three… so next is Eight.'],
+[4,'Three chests have labels. Gold: “The treasure is in here.” Silver: “The treasure is not in here.” Bronze: “The treasure is not in the gold chest.” Exactly ONE label is true. Where is the treasure?','The silver chest',['The gold chest','The bronze chest','There is no treasure'],'If it is in silver, only the bronze label is true. Any other place makes two labels true.'],
+[4,'If 3 cats catch 3 mice in 3 minutes, how many cats are needed to catch 100 mice in 100 minutes?','3',['100','33','1'],'Each cat catches one mouse every 3 minutes, so 3 cats catch 100 mice in 100 minutes.'],
+[4,'A bat and a ball cost 110 cents altogether. The bat costs 100 cents MORE than the ball. How many cents does the ball cost?','5',['10','1','55'],'Ball 5 + bat 105 = 110, and the bat costs exactly 100 more.'],
+[5,'A snail climbs a 10-metre wall. Each day it climbs 3 metres, and each night it slips back 2 metres. On which day does it reach the top?','Day 8',['Day 10','Day 7','Day 9'],'After 7 days and nights it is at 7 m. On day 8 it climbs 3 m and reaches the top before it can slip.'],
+[5,'How many times is the digit 9 written when you write every number from 1 to 100?','20',['10','11','19'],'Ten times in the ones place (9, 19 … 99) and ten times in the tens place (90 to 99).']
+];
+const LOGIC=[
+[1,2,()=>{const a=rint(2,20),d=rint(2,9);return seqQ([0,1,2,3,4].map(i=>a+i*d),`Add ${d} each time.`,'How much does it go up by each time?')}],
+[1,2,()=>{const a=rint(1,5);return seqQ([0,1,2,3,4].map(i=>a*2**i),'Double each time.','Compare each number with the one before.')}],
+[1,3,()=>{const a=rint(60,99),d=rint(3,9);return seqQ([0,1,2,3,4].map(i=>a-i*d),`Subtract ${d} each time.`,'Is it going up or down, and by how much?')}],
+[2,3,()=>{const a=rint(1,4),b=rint(2,6),s=[a,b];for(let i=2;i<6;i++)s.push(s[i-1]+s[i-2]);return seqQ(s,'Each number is the sum of the two before it.','Try adding two neighbours together.')}],
+[2,3,()=>{const k=rint(1,4);return seqQ([0,1,2,3,4].map(i=>(k+i)**2),'These are square numbers.','Think 1 × 1, 2 × 2, 3 × 3…')}],
+[2,3,()=>{const a=rint(2,6),b=rint(2,6),c=rint(1,6),sy=shuffle(['🔺','🟡','⭐','🔷']).slice(0,3);return num(`${sy[0]} + ${sy[0]} = ${2*a}\n${sy[0]} + ${sy[1]} = ${a+b}\n${sy[1]} + ${sy[2]} = ${b+c}\nWhat number is ${sy[2]}?`,c,`Start with the first line to find ${sy[0]}.`,`${sy[0]} = ${a}, ${sy[1]} = ${b}, so ${sy[2]} = ${c}.`)}],
+[2,3,()=>{const w=pick(['CAT','DOG','BAG','ACE','BED','FIG','CAB','DAD','HEN','JAM']),s=[...w].reduce((t,c)=>t+c.charCodeAt(0)-64,0);return num(`In this code A = 1, B = 2, C = 3 and so on. What does the word ${w} add up to?`,s,'Count along the alphabet for each letter.',`${[...w].map(c=>c.charCodeAt(0)-64).join(' + ')} = ${s}.`)}],
+[3,4,()=>{const a=rint(2,9),d=rint(2,5),e=rint(1,3),s=[a];for(let i=1;i<7;i++)s.push(s[i-1]+(i%2?d:-e));return seqQ(s,`It goes up ${d}, then down ${e}, over and over.`,'There are two rules taking turns.')}],
+[3,4,()=>{const k=rint(1,2),w=pick(CODEWORDS);const q=txt(`Rune-code: every letter was moved ${k} place${k>1?'s':''} FORWARD in the alphabet. Move them back to read the word:\n${caesar(w,k)}`,w,`Move each letter ${k} back. For example ${caesar('A',k)} becomes A.`,`The word was ${w}.`);q.visual=ABC;return q}],
+[3,6,()=>lockPuzzle(3)],
+[3,5,()=>{const a=rint(2,7);let b=rint(2,7);b===a&&(b=a+1);const sy=shuffle(['🐉','🗝️','💎','🛡️']).slice(0,2);return num(`${sy[0]} + ${sy[1]} = ${a+b}\n${sy[0]} − ${sy[1]} = ${Math.abs(a-b)}\n${a>=b?sy[0]:sy[1]} is the bigger one. What is ${a>=b?sy[0]:sy[1]}?`,Math.max(a,b),'Add the two answers together, then halve.',`${sy[0]} = ${a} and ${sy[1]} = ${b}.`)}],
+[4,5,()=>{const k=rint(1,5);return seqQ([0,1,2,3,4].map(i=>(k+i)*(k+i+1)/2),'These are triangular numbers: the gap grows by 1 each time.','Look at the gaps between the numbers.')}],
+[4,5,()=>{const ps=[2,3,5,7,11,13,17,19,23,29,31,37],k=rint(0,6);return seqQ(ps.slice(k,k+5),'These are prime numbers in order.','None of these can be divided evenly, except by 1 and themselves.')}],
+[4,6,()=>{const k=rint(3,6),w=pick(CODEWORDS);const q=txt(`Rune-code: every letter was moved ${k} places FORWARD in the alphabet. Move them back to read the word:\n${caesar(w,k)}`,w,`Move each letter ${k} back. For example ${caesar('A',k)} becomes A.`,`The word was ${w}.`);q.visual=ABC;return q}],
+[5,6,()=>{const k=rint(1,4),c=pick([1,-1]);return seqQ([0,1,2,3,4].map(i=>(k+i)**2+c),`Square numbers ${c>0?'plus':'minus'} 1.`,'Compare them with the square numbers 1, 4, 9, 16, 25…')}],
+[5,6,()=>{const k=rint(1,3);return seqQ([0,1,2,3].map(i=>(k+i)**3),'These are cube numbers.','Try 1 × 1 × 1, 2 × 2 × 2…')}],
+[5,6,()=>{const a=rint(1,5),b=rint(20,30),s=[];for(let i=0;i<4;i++)s.push(a+i*3,b-i*2);return seqQ(s.slice(0,7),'Two sequences are woven together: one goes up 3, the other goes down 2.','Look at every second number.')}],
+[5,6,()=>{const w=pick(CODEWORDS),at=w.replace(/[A-Z]/g,c=>String.fromCharCode(155-c.charCodeAt(0)));const q=txt(`Mirror-code: A swaps with Z, B swaps with Y, C swaps with X, and so on. Decode:\n${at}`,w,'Count how far the letter is from the end of the alphabet, then count the same from the start.',`The word was ${w}.`);q.visual=ABC;return q}]
+];
+
+/* ---------------- SCIENCE ---------------- */
+const SCIENCE=[
+[1,'Which force pulls everything towards the centre of the Earth?','Gravity',['Friction','Magnetism','Wind'],'Gravity pulls objects towards each other. Earth’s gravity keeps us on the ground.'],
+[1,'Which gas do humans need to breathe in to stay alive?','Oxygen',['Carbon dioxide','Helium','Steam'],'Our bodies use oxygen to release energy from food.'],
+[1,'How many legs does a spider have?','8',['6','10','12'],'Spiders are arachnids with 8 legs. Insects have 6.'],
+[1,'Which is the largest planet in our solar system?','Jupiter',['Saturn','Earth','Neptune'],'Jupiter is so big that all the other planets could fit inside it.'],
+[1,'Which planet is known as the Red Planet?','Mars',['Venus','Jupiter','Mercury'],'Rusty iron in its dust makes Mars look red.'],
+[1,'At what temperature does water freeze, in degrees Celsius?','0',['10','100','−10'],'Water freezes at 0 °C and boils at 100 °C at sea level.'],
+[1,'Animals that eat only plants are called …','herbivores',['carnivores','omnivores','predators'],'Herbivores eat plants, carnivores eat animals, omnivores eat both.'],
+[1,'Which of these animals is a mammal?','Dolphin',['Shark','Penguin','Crocodile'],'Dolphins breathe air and feed their babies milk, so they are mammals.'],
+[2,'Which planet is closest to the Sun?','Mercury',['Venus','Earth','Mars'],'Mercury is the closest planet to the Sun, and the smallest.'],
+[2,'How many planets are in our solar system?','8',['7','9','10'],'There are 8 planets. Pluto is now called a dwarf planet.'],
+[2,'Which part of a plant makes food using sunlight?','The leaves',['The roots','The flowers','The seeds'],'Leaves contain chlorophyll, which captures sunlight to make food.'],
+[2,'Which is NOT one of the three common states of matter?','Energy',['Solid','Liquid','Gas'],'Solid, liquid and gas are states of matter. Energy is not matter.'],
+[2,'What is the largest organ of the human body?','The skin',['The heart','The brain','The liver'],'Your skin covers your whole body and is your largest organ.'],
+[2,'If two magnets have the same poles facing each other, they will …','push apart',['pull together','do nothing','spin forever'],'Like poles repel. Opposite poles attract.'],
+[2,'What is the Milky Way?','A galaxy',['A planet','A comet','A constellation'],'The Milky Way is our galaxy, home to hundreds of billions of stars.'],
+[2,'Why do we see lightning before we hear thunder?','Light travels faster than sound',['Thunder starts later','Sound is quieter','Clouds block the sound'],'Light is almost a million times faster than sound in air.'],
+[2,'Which simple machine is a seesaw an example of?','A lever',['A pulley','A wedge','A screw'],'A seesaw is a lever that turns on a pivot.'],
+[2,'The kākāpō of Aotearoa is the world’s only …','flightless parrot',['swimming parrot','night-time penguin','poisonous bird'],'The kākāpō is a heavy, nocturnal parrot that cannot fly.'],
+[3,'What is the process plants use to make food from sunlight called?','Photosynthesis',['Digestion','Evaporation','Pollination'],'In photosynthesis, plants turn light, water and carbon dioxide into sugar and oxygen.'],
+[3,'Which gas do plants take in from the air to make their food?','Carbon dioxide',['Oxygen','Nitrogen','Hydrogen'],'Plants absorb carbon dioxide and give out oxygen.'],
+[3,'What is the hardest natural material on Earth?','Diamond',['Gold','Iron','Granite'],'Diamond is the hardest natural substance known.'],
+[3,'What causes the seasons on Earth?','The tilt of the Earth',['How far Earth is from the Sun','The Moon’s shadow','Clouds'],'Earth is tilted, so each half leans towards the Sun for part of the year.'],
+[3,'What do we call molten rock while it is still underground?','Magma',['Lava','Ash','Basalt'],'It is called magma underground and lava once it erupts.'],
+[3,'Which blood cells help your body fight infection?','White blood cells',['Red blood cells','Platelets','Nerve cells'],'White blood cells attack germs. Red blood cells carry oxygen.'],
+[3,'What does a light-year measure?','Distance',['Time','Brightness','Speed'],'A light-year is the distance light travels in one year.'],
+[3,'Sound cannot travel through …','empty space',['water','steel','air'],'Sound needs something to vibrate. Space is a vacuum, so it is silent.'],
+[3,'How many chambers does the human heart have?','4',['2','3','6'],'The heart has two atria and two ventricles.'],
+[3,'Which of these materials lets electricity flow through it easily?','Copper',['Rubber','Glass','Wood'],'Copper is a good conductor, which is why wires are made of it.'],
+[3,'What is the name of the force that slows a sled sliding across the ground?','Friction',['Gravity','Magnetism','Lift'],'Friction acts between surfaces that rub together.'],
+[3,'When water vapour cools and turns back into liquid droplets, it is called …','condensation',['evaporation','freezing','melting'],'Condensation is gas turning to liquid. Evaporation is liquid turning to gas.'],
+[4,'Which planet is the hottest?','Venus',['Mercury','Mars','Jupiter'],'Venus is hotter than Mercury because its thick atmosphere traps heat.'],
+[4,'What is the centre of an atom called?','The nucleus',['The electron','The shell','The core'],'The nucleus holds protons and neutrons. Electrons move around it.'],
+[4,'About how many bones are in an adult human body?','206',['106','306','52'],'Adults have 206 bones. Babies are born with more, which fuse together.'],
+[4,'What type of rock forms when lava cools and hardens?','Igneous',['Sedimentary','Metamorphic','Limestone'],'Igneous rock forms from cooled magma or lava.'],
+[4,'Which metal is a liquid at room temperature?','Mercury',['Iron','Aluminium','Silver'],'Mercury is the only metal that is liquid at room temperature.'],
+[4,'Every food chain begins with a …','producer, such as a plant',['top predator','decomposer','herbivore'],'Plants make their own food from sunlight, so they are producers.'],
+[4,'In which type of rock are most fossils found?','Sedimentary',['Igneous','Metamorphic','Volcanic glass'],'Sedimentary rock forms in layers that bury and preserve remains.'],
+[4,'On the Moon there is no air. If you drop a hammer and a feather together, which lands first?','They land at the same time',['The hammer','The feather','Neither: they float'],'With no air to slow the feather, gravity pulls both down equally. An astronaut tested it in 1971.'],
+[4,'Which vitamin does your skin make when sunlight shines on it?','Vitamin D',['Vitamin C','Vitamin A','Vitamin K'],'Sunlight helps your skin make vitamin D, which keeps bones strong.'],
+[4,'Why does an ice cube float in a glass of water?','Ice is less dense than liquid water',['Ice is full of air','Ice is lighter than air','Cold things always rise'],'Water expands as it freezes, so ice is less dense and floats.'],
+[5,'What is the chemical formula for water?','H₂O',['CO₂','O₂','NaCl'],'Each water molecule has two hydrogen atoms and one oxygen atom.'],
+[5,'About how fast does light travel?','300,000 km every second',['300 km every second','3,000 km every hour','300,000 km every hour'],'Light travels about 300,000 kilometres per second.'],
+[5,'What shape is a DNA molecule?','A double helix',['A sphere','A cube','A straight line'],'DNA looks like a twisted ladder, called a double helix.'],
+[5,'A stretched rubber band is storing which kind of energy?','Elastic potential energy',['Heat energy','Sound energy','Light energy'],'Stretching stores energy that is released when you let go.'],
+[5,'Which planet has the most known moons?','Saturn',['Jupiter','Earth','Mars'],'Astronomers have found more moons around Saturn than any other planet.'],
+[5,'Lemon juice and vinegar taste sour because they are …','acids',['alkalis','salts','metals'],'Sour tastes usually come from acids.'],
+[5,'What is the chemical symbol for gold?','Au',['Go','Gd','Ag'],'Au comes from aurum, the Latin word for gold. Ag is silver.'],
+[6,'What are the tiny particles that move around the nucleus of an atom called?','Electrons',['Protons','Neutrons','Photons'],'Electrons are tiny, negatively charged particles around the nucleus.'],
+[6,'The tuatara is special because it is …','the last survivor of an ancient group of reptiles',['the world’s largest lizard','a kind of dinosaur','a reptile that can fly'],'Tuatara look like lizards but belong to a separate, ancient order of reptiles.'],
+[6,'Which of these is the best description of a black hole?','A place where gravity is so strong that light cannot escape',['An empty hole in space','A burnt-out planet','A very dark star cloud'],'Black holes pack huge mass into a tiny space.']
+];
+
+/* ---------------- WORDS & WORLD ---------------- */
+const SPELLS=[[2,'because','becuase','becos','becaus'],[2,'friend','freind','frend','friand'],[2,'different','diffrent','diferent','differant'],[2,'beautiful','beutiful','beautifull','butiful'],[3,'Wednesday','Wensday','Wednsday','Wedensday'],[3,'February','Febuary','Febrary','Feburary'],[3,'surprise','suprise','surprize','serprise'],[3,'library','libary','librery','liberry'],[3,'favourite','favorit','faverite','favourit'],[3,'knowledge','knowlege','nowledge','knolledge'],[4,'separate','seperate','seprate','separete'],[4,'definitely','definately','definitly','defanitely'],[4,'necessary','neccessary','necesary','neccesary'],[4,'temperature','temprature','tempreture','temperture'],[4,'environment','enviroment','envirnment','environmant'],[4,'restaurant','restarant','resturant','restaraunt'],[5,'rhythm','rythm','rhythem','rythym'],[5,'embarrass','embarass','embaras','embarras'],[5,'mischievous','mischievious','mischevous','mischivous'],[5,'conscience','concience','consience','conscence'],[6,'accommodate','accomodate','acommodate','accomadate'],[6,'occasionally','ocasionally','occasionaly','occassionally'],[6,'onomatopoeia','onomatopia','onamatopoeia','onomatapoeia'],[6,'queue','que','queu','qeue']];
+const ANAGRAMS=[[1,'MAGIC','spells and wands'],[1,'TORCH','it lights your way'],[1,'GHOST','it says boo'],[2,'DRAGON','a fire-breathing beast'],[2,'WIZARD','wears a pointy hat'],[2,'KNIGHT','wears shining armour'],[2,'SHIELD','it blocks a sword'],[3,'CRYSTAL','a sparkling stone'],[3,'DUNGEON','where you are right now'],[3,'LANTERN','a light you can carry'],[3,'VOLCANO','a mountain that erupts'],[4,'PHOENIX','a bird reborn from ashes'],[4,'MYSTERY','something unexplained'],[4,'SKELETON','all your bones together'],[5,'FRACTION','a part of a whole'],[5,'TREASURE','what the dragon guards'],[5,'LABYRINTH','another word for a maze'],[6,'ALCHEMIST','tries to turn lead into gold'],[6,'HEXAGON','a shape with six sides']];
+const VOCAB=[
+[1,'Which word means the same as “enormous”?','gigantic',['tiny','narrow','quiet']],[1,'Which word means the same as “swift”?','fast',['heavy','sleepy','late']],[1,'Which word is the opposite of “victory”?','defeat',['prize','battle','glory']],
+[2,'Which word means the same as “weary”?','tired',['careful','angry','brave']],[2,'Which word means the same as “vanish”?','disappear',['polish','arrive','finish']],[2,'Which word is the opposite of “ancient”?','modern',['old','dusty','huge']],[2,'A “nocturnal” animal is one that …','is active at night',['lives in water','eats only meat','sleeps all winter']],
+[3,'Which word means the same as “courageous”?','brave',['curious','polite','nervous']],[3,'Something “transparent” is …','see-through',['very heavy','brightly coloured','easily bent']],[3,'Which word is the opposite of “ascend”?','descend',['climb','attend','pretend']],[3,'Something “fragile” is …','easily broken',['very strong','extremely old','hard to find']],
+[4,'Which word means the same as “peculiar”?','strange',['special','popular','ordinary']],[4,'Which word means the same as “abundant”?','plentiful',['scarce','forgotten','expensive']],[4,'Which word is the opposite of “expand”?','contract',['explode','extend','explain']],[4,'Someone who is “reluctant” is …','unwilling',['delighted','exhausted','well prepared']],
+[5,'Which word means the same as “meticulous”?','very careful',['very fast','very loud','very rude']],[5,'Something “inevitable” is …','certain to happen',['impossible','invisible','very unlikely']],[5,'Which word is the opposite of “scarce”?','plentiful',['scary','rare','frightened']],
+[6,'Something “ephemeral” …','lasts only a short time',['is very large','cannot be seen','is extremely old']],[6,'A “benevolent” ruler is …','kind and generous',['cruel and greedy','very wealthy','easily fooled']]];
+const ROOTS=[[2,'tri','three','tricycle and triangle'],[2,'aqua','water','aquarium'],[3,'oct','eight','octopus and octagon'],[3,'bio','life','biology'],[3,'geo','earth','geography'],[3,'micro','small','microscope'],[4,'tele','far','telescope and telephone'],[4,'photo','light','photograph'],[4,'therm','heat','thermometer'],[4,'cent','hundred','century and centimetre'],[5,'kilo','thousand','kilogram and kilometre'],[5,'mega','million','megabyte'],[6,'giga','billion','gigabyte'],[6,'chrono','time','chronological']];
+const RIDDLES=[[1,'What has hands but cannot clap?','A clock',['A glove','A statue','A tree']],[1,'What has keys but cannot open a single lock?','A piano',['A jailer','A map','A treasure chest']],[2,'What gets wetter the more it dries?','A towel',['A sponge cake','The sea','A raincoat']],[2,'What has a neck but no head?','A bottle',['A snake','A river','A sock']],[2,'What has many teeth but cannot bite?','A comb',['A baby shark','A dragon','A cloud']],[3,'The more you take, the more you leave behind. What are they?','Footsteps',['Coins','Breaths','Memories']],[3,'What can travel all around the world while staying in a corner?','A stamp',['A spider','A shadow','A compass']],[3,'I have cities but no houses, mountains but no trees, and water but no fish. What am I?','A map',['A dream','A desert','A painting']],[4,'What goes up but never comes down?','Your age',['A balloon','Smoke','A ladder']],[4,'What has one eye but cannot see?','A needle',['A cyclops asleep','A potato','A storm']],[4,'What begins with T, ends with T, and has T in it?','A teapot',['A tent','A trumpet','A ticket']],[5,'What belongs to you, but other people use it more than you do?','Your name',['Your shadow','Your toothbrush','Your birthday']]];
+const GRAMMAR=[[1,'What is the plural of “mouse”?','mice',['mouses','mices','meese']],[1,'What is the plural of “child”?','children',['childs','childrens','childes']],[2,'Yesterday I ___ across the lake.','swam',['swimmed','swum','swimed']],[2,'She ___ a lantern to the cave.','brought',['bringed','brang','brung']],[2,'A group of wolves is called a …','pack',['flock','herd','school']],[3,'A group of lions is called a …','pride',['pack','gaggle','swarm']],[3,'“___ going to explore the vault.”','They’re',['Their','There','Theyre']],[3,'“The dragon guarded ___ treasure.”','its',['it’s','its’','it is']],[4,'“___ the bravest adventurer here.”','You’re',['Your','Youre','Yore']],[4,'Which word is an adverb in: “The goblin crept quietly past the sleeping troll”?','quietly',['goblin','crept','sleeping']],[5,'Which of these is a simile?','As quiet as a mouse',['The wind whispered','Boom! Crash!','A mountain of homework']],[5,'“Buzz”, “crash” and “sizzle” are all examples of …','onomatopoeia',['alliteration','rhyme','metaphor']],[6,'“The classroom was a zoo” is an example of a …','metaphor',['simile','pun','question']]];
+const WORLD=[[1,'What is the capital city of New Zealand?','Wellington',['Auckland','Christchurch','Hamilton']],[1,'How many continents are there?','7',['5','6','8']],[1,'Which is the largest ocean on Earth?','The Pacific',['The Atlantic','The Indian','The Arctic']],[2,'What is the te reo Māori name for New Zealand?','Aotearoa',['Aoraki','Te Papa','Rotorua']],[2,'Which is New Zealand’s largest city?','Auckland',['Wellington','Dunedin','Tauranga']],[2,'What is the capital city of Australia?','Canberra',['Sydney','Melbourne','Perth']],[2,'What is the tallest mountain in the world above sea level?','Mount Everest',['Aoraki / Mount Cook','Kilimanjaro','Mont Blanc']],[3,'What is the highest mountain in New Zealand?','Aoraki / Mount Cook',['Mount Ruapehu','Mount Taranaki','Mount Aspiring']],[3,'What is New Zealand’s largest lake?','Lake Taupō',['Lake Wakatipu','Lake Te Anau','Lake Rotorua']],[3,'Which is the largest continent?','Asia',['Africa','Europe','Antarctica']],[3,'In which country would you find the ancient pyramids of Giza?','Egypt',['Mexico','Greece','India']],[3,'What is the capital city of Japan?','Tokyo',['Kyoto','Beijing','Seoul']],[4,'In which year was Te Tiriti o Waitangi (the Treaty of Waitangi) first signed?','1840',['1769','1907','1893']],[4,'Which is the largest country in the world by area?','Russia',['Canada','China','Australia']],[4,'What is the capital city of Canada?','Ottawa',['Toronto','Vancouver','Montreal']],[4,'On which continent is the Sahara Desert?','Africa',['Asia','Australia','South America']],[5,'Which country has three capital cities?','South Africa',['Australia','Brazil','India']],[5,'How many stars are on the New Zealand flag?','4',['5','6','3']],[5,'Lake Taupō fills the crater of a …','supervolcano',['meteor strike','glacier','sunken city']],[6,'What is the smallest country in the world?','Vatican City',['Monaco','Nauru','Fiji']],[6,'Which line of latitude runs around the middle of the Earth?','The Equator',['The Tropic of Cancer','The Prime Meridian','The Antarctic Circle']]];
+const TEREO=[['tahi','one'],['rua','two'],['toru','three'],['whā','four'],['rima','five'],['ono','six'],['whitu','seven'],['waru','eight'],['iwa','nine'],['tekau','ten'],['whero','red'],['kākāriki','green'],['kōwhai','yellow'],['kikorangi','blue'],['pango','black'],['mā','white'],['whānau','family'],['kura','school'],['maunga','mountain'],['awa','river'],['moana','sea'],['whare','house'],['kai','food'],['rā','sun'],['marama','moon'],['whetū','star'],['ngeru','cat'],['kurī','dog'],['manu','bird'],['ika','fish']];
+const bankQ=(bank,L,mk)=>{let pool=bank.filter(r=>r[0]===L);if(!pool.length)pool=bank.filter(r=>Math.abs(r[0]-L)<=1);if(!pool.length)pool=bank;return mk(pick(pool))};
+const WORDS=[
+[1,6,L=>bankQ(SPELLS,Math.max(2,L),r=>mc('Which spelling is correct?',r[1],r.slice(2),`The correct spelling is “${r[1]}”.`))],
+[1,6,L=>bankQ(ANAGRAMS,L,r=>{let sc=r[1];for(let i=0;i<20&&sc===r[1];i++)sc=shuffle([...r[1]]).join('');return txt(`Unscramble the letters:  ${[...sc].join(' ')}\nClue: ${r[2]}.`,r[1],`It starts with ${r[1][0]} and ends with ${r[1].slice(-1)}.`,`The word was ${r[1]}.`)})],
+[1,6,L=>bankQ(VOCAB,L,r=>mc(r[1],r[2],r[3],`“${r[2][0].toUpperCase()+r[2].slice(1)}” is right.`))],
+[2,6,L=>bankQ(ROOTS,L,r=>mc(`The word part “${r[1]}” (as in ${r[3]}) means …`,r[2],ROOTS.filter(o=>o[2]!==r[2]).map(o=>o[2]),`“${r[1]}” means ${r[2]}, as in ${r[3]}.`))],
+[1,5,L=>bankQ(RIDDLES,L,r=>mc(`Riddle: ${r[1]}`,r[2],r[3],`The answer is: ${r[2].toLowerCase()}.`))],
+[1,6,L=>bankQ(GRAMMAR,L,r=>mc(r[1],r[2],r[3],`“${r[2]}” is correct.`))],
+[1,6,L=>bankQ(WORLD,L,r=>mc(r[1],r[2],r[3],`The answer is ${r[2]}.`))],
+[1,6,L=>bankQ(WORLD,L,r=>mc(r[1],r[2],r[3],`The answer is ${r[2]}.`))],
+[1,6,L=>{const r=pick(L<=2?TEREO.slice(0,16):TEREO),rev=L>=3&&Math.random()<.5;return rev?mc(`What is the te reo Māori word for “${r[1]}”?`,r[0],TEREO.filter(o=>o!==r).map(o=>o[0]),`“${r[0]}” means ${r[1]}.`):mc(`In te reo Māori, what does “${r[0]}” mean?`,r[1],TEREO.filter(o=>o!==r).map(o=>o[1]),`“${r[0]}” means ${r[1]}.`)}],
+[3,6,()=>{const w=TEREO.slice(0,10);if(Math.random()<.5){const k=rint(1,9);return mc(`In te reo Māori, “tekau mā ${w[k-1][0]}” is which number?`,10+k,near(10+k,[1,-1,2,-2,10]),`“Tekau mā ${w[k-1][0]}” means ten and ${k}: ${10+k}.`,'“Tekau” means ten, and “mā” joins on the ones.')}const a2=rint(1,8),b2=rint(1,9-a2);return mc(`${w[a2-1][0]} + ${w[b2-1][0]} = ?  (Answer in te reo Māori.)`,w[a2+b2-1][0],w.filter((o,i)=>i!==a2+b2-1).map(o=>o[0]),`${a2} + ${b2} = ${a2+b2}, which is ${w[a2+b2-1][0]}.`,`${w[a2-1][0]} is ${a2}.`)}]
+];
+
+/* ---------------- question factory ---------------- */
+const recent=[];
+function makeQ(sub,L){L=clamp(Math.round(L),1,6);
+ for(let t=0;t<12;t++){let q;
+  if(sub==='maths'){const pool=MATHS.filter(g=>L>=g[0]&&L<=g[1]);q=pick(pool.length?pool:MATHS)[2]()}
+  else if(sub==='logic'){if(Math.random()<.38){q=bankQ(LOGICBANK,Math.min(L,5),r=>/^\d+$/.test(r[2])&&r[0]>=4?num(r[1],r[2],'Read it slowly. The obvious answer is a trap.',r[4]):mc(r[1],r[2],r[3],r[4]))}else{const pool=LOGIC.filter(g=>L>=g[0]&&L<=g[1]);q=pick(pool.length?pool:LOGIC)[2]()}}
+  else if(sub==='science'){q=bankQ(SCIENCE,L,r=>mc(r[1],r[2],r[3],r[4]))}
+  else{const pool=WORDS.filter(g=>L>=g[0]&&L<=g[1]);q=pick(pool)[2](L)}
+  q.sub=sub;q.lv=L;const key=q.prompt+'|'+q.answer;if(!recent.includes(key)||t===11){recent.push(key);recent.length>60&&recent.shift();return q}}
+}
+
+/* ================= Emberdeep — engine, encounters and interface ================= */
+const ACH=[
+['a1','👣','First Steps','Answer your first question correctly',s=>s.st.right>=1],
+['a2','🔥','On Fire','Get 5 first-try answers in a row',s=>s.st.best>=5],
+['a3','☄️','Unstoppable','Get 10 first-try answers in a row',s=>s.st.best>=10],
+['a4','🌟','Legendary Streak','Get 20 first-try answers in a row',s=>s.st.best>=20],
+['a5','💯','Century','Answer 100 questions correctly',s=>s.st.right>=100],
+['a6','🧠','Big Brain','Answer 500 questions correctly',s=>s.st.right>=500],
+['a7','⚡','Quick Thinker','Earn 10 speed bonuses',s=>s.st.fast>=10],
+['a8','🔐','Locksmith','Crack 5 combination locks',s=>s.st.locks>=5],
+['a9','🕵️','Code Breaker','Decode 5 secret rune-codes',s=>s.st.ciphers>=5],
+['a10','🧰','Treasure Hunter','Open 10 treasure chests',s=>s.st.chests>=10],
+['a11','📖','Lore Seeker','Read 5 rune stones',s=>s.codex.length>=5],
+['a12','📚','Loremaster','Read every rune stone',s=>s.codex.length>=CODEX.length],
+['a13','🏅','Boss Buster','Defeat your first floor boss',s=>s.st.boss>=1],
+['a14','🛡️','Flawless','Defeat a boss without losing a heart',s=>s.st.flawless>=1],
+['a15','⬇️','Going Down','Reach the third floor',s=>s.best>=2],
+['a16','🐉','Dragon Tamer','Defeat Emberclaw on the fifth floor',s=>s.best>=5],
+['a17','🎒','Collector','Find 10 different relics',s=>Object.keys(s.relics).length>=10],
+['a18','🏛️','Curator','Find 25 different relics',s=>Object.keys(s.relics).length>=25],
+['a19','👑','Completionist','Find all 40 relics',s=>Object.keys(s.relics).length>=RELICS.length],
+['a20','💜','Epic Find','Find an epic relic',s=>RELICS.some(r=>r.rar==='epic'&&s.relics[r.id])],
+['a21','🌈','Legendary Find','Find a legendary relic',s=>RELICS.some(r=>r.rar==='legendary'&&s.relics[r.id])],
+['a22','💰','Gem Hoarder','Collect 500 gems in total',s=>s.st.gemsAll>=500],
+['a23','🎓','Master of Maths','Reach maths level 5',s=>s.skills.maths.lv>=5],
+['a24','🧩','Master of Logic','Reach logic level 5',s=>s.skills.logic.lv>=5],
+['a25','🔬','Master of Science','Reach science level 5',s=>s.skills.science.lv>=5],
+['a26','✒️','Master of Words','Reach words level 5',s=>s.skills.words.lv>=5],
+['a27','🦘','Bouncy','Jump 50 times',s=>s.st.jumps>=50],
+['a28','🐾','Best Friend','Adopt a companion',s=>s.shop.own.some(i=>/^pet/.test(i))],
+['a29','🗺️','Cartographer','Explore 90% of a floor',s=>s.st.explored>=90],
+['a30','🎖️','Seasoned','Reach adventurer level 10',s=>levelOf(s.xp)>=10]
+].map(a=>({id:a[0],e:a[1],name:a[2],desc:a[3],test:a[4]}));
+const SHOP=[
+{id:'lamp0',e:'🔥',name:'Ember Lantern',cost:0,desc:'A warm orange glow.',col:[255,170,90]},
+{id:'lamp1',e:'❄️',name:'Frostfire Lantern',cost:60,desc:'Cool blue light.',col:[120,210,255]},
+{id:'lamp2',e:'🧪',name:'Witchlight Lantern',cost:60,desc:'An eerie green glow.',col:[170,255,120]},
+{id:'lamp3',e:'🔮',name:'Royal Violet Lantern',cost:90,desc:'A rich purple shimmer.',col:[210,150,255]},
+{id:'lamp4',e:'🌈',name:'Prism Lantern',cost:200,desc:'Slowly shifts through every colour.',col:null},
+{id:'pet0',e:'🦉',name:'Hoot the Owl',cost:120,desc:'Wise. Hints no longer cost you any XP.'},
+{id:'pet1',e:'🦊',name:'Flick the Fox',cost:120,desc:'Quick. Sniffs out gems from much further away.'},
+{id:'pet2',e:'🐢',name:'Shellby the Turtle',cost:80,desc:'Patient. Gives you 8 extra seconds for speed bonuses.'},
+{id:'pet3',e:'🐲',name:'Cinderpip the Dragonling',cost:250,desc:'Brave. Gives you one extra heart in boss fights.'},
+{id:'shield',e:'🛡️',name:'Shield Charm',cost:40,desc:'Blocks one wrong answer in a boss fight. Carry up to 3.'}];
+
+/* ---------------- save ---------------- */
+const SAVEKEY='emberdeep-save-v1';
+const newSkill=()=>({lv:2,up:0,down:0,right:0,total:0});
+function freshSave(){return{v:1,name:'Adventurer',xp:0,gems:0,depth:0,best:0,fl:null,relics:{},codex:[],ach:[],skills:{maths:newSkill(),logic:newSkill(),science:newSkill(),words:newSkill()},st:{ans:0,right:0,streak:0,best:0,boss:0,flawless:0,chests:0,fast:0,jumps:0,locks:0,ciphers:0,gemsAll:0,explored:0},shop:{own:['lamp0'],lamp:'lamp0',pet:'',shields:0},sound:1,started:0}}
+function sanitize(raw){const s=freshSave();if(!raw||typeof raw!=='object'||Array.isArray(raw))return s;
+ const n=(v,lo,hi,d)=>typeof v==='number'&&Number.isFinite(v)?clamp(Math.floor(v),lo,hi):d;
+ if(typeof raw.name==='string')s.name=raw.name.replace(/[^\p{L}\p{N} '\-]/gu,'').trim().slice(0,16)||'Adventurer';
+ s.xp=n(raw.xp,0,1e7,0);s.gems=n(raw.gems,0,1e7,0);s.depth=n(raw.depth,0,999,0);s.best=n(raw.best,0,999,0);s.sound=raw.sound===0?0:1;s.started=raw.started?1:0;
+ if(raw.relics&&typeof raw.relics==='object')RELICS.forEach(r=>{const c=n(raw.relics[r.id],0,999,0);c&&(s.relics[r.id]=c)});
+ if(Array.isArray(raw.codex))s.codex=CODEX.map(c=>c.id).filter(id=>raw.codex.includes(id));
+ if(Array.isArray(raw.ach))s.ach=ACH.map(a=>a.id).filter(id=>raw.ach.includes(id));
+ for(const k in s.skills){const r=raw.skills&&raw.skills[k];if(r&&typeof r==='object')s.skills[k]={lv:n(r.lv,1,6,2),up:n(r.up,0,5,0),down:n(r.down,0,5,0),right:n(r.right,0,1e6,0),total:n(r.total,0,1e6,0)}}
+ for(const k in s.st)s.st[k]=n(raw.st&&raw.st[k],0,1e7,0);
+ const sh=raw.shop;if(sh&&typeof sh==='object'){const ids=SHOP.map(i=>i.id);s.shop.own=[...new Set(['lamp0',...(Array.isArray(sh.own)?sh.own.filter(i=>ids.includes(i)&&i!=='shield'):[])])];s.shop.lamp=s.shop.own.includes(sh.lamp)&&/^lamp/.test(sh.lamp)?sh.lamp:'lamp0';s.shop.pet=s.shop.own.includes(sh.pet)&&/^pet/.test(sh.pet)?sh.pet:'';s.shop.shields=n(sh.shields,0,3,0)}
+ const f=raw.fl;if(f&&typeof f==='object'&&n(f.depth,0,999,-1)===s.depth){const arr=(a,max)=>Array.isArray(a)?[...new Set(a.map(v=>n(v,0,max,-1)).filter(v=>v>=0))]:[];s.fl={depth:s.depth,g:[0,1,2,3].map(i=>Array.isArray(f.g)&&f.g[i]?1:0),ch:arr(f.ch,20),ru:arr(f.ru,5),gm:arr(f.gm,60),boss:f.boss?1:0,door:f.door?1:0,seen:typeof f.seen==='string'&&/^[01]{441}$/.test(f.seen)?f.seen:''}}
+ return s}
+let S,saveBad=false;
+function loadSave(){try{return sanitize(JSON.parse(localStorage.getItem(SAVEKEY)||'null'))}catch(e){return freshSave()}}
+function save(){try{if(W)S.fl.seen=Array.from(W.seen).join('');localStorage.setItem(SAVEKEY,JSON.stringify(S))}catch(e){if(!saveBad){saveBad=true;toast('⚠️ Progress cannot be saved in this browser','Private mode or blocked storage')}}}
+const levelOf=xp=>{let L=1;while(xp>=xpFor(L))L++;return L};
+const theme=()=>S.depth%5,cycle=()=>Math.floor(S.depth/5),FL=()=>FLOORS[theme()];
+
+/* ---------------- audio ---------------- */
+let AC=null,mus=null;
+function actx(){if(!S.sound)return null;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();AC.state==='suspended'&&AC.resume();return AC}catch(e){return null}}
+function tone(fq,dur,type,vol,when){const ac=actx();if(!ac)return;const t0=ac.currentTime+(when||0),o=ac.createOscillator(),g=ac.createGain();o.type=type||'sine';o.frequency.value=fq;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(vol||.06,t0+.015);g.gain.exponentialRampToValueAtTime(.0001,t0+dur);o.connect(g);g.connect(ac.destination);o.start(t0);o.stop(t0+dur+.05)}
+const chime=(ns,type,vol)=>ns.forEach((f,i)=>tone(f,.32,type||'sine',vol||.07,i*.085));
+function musicSync(){if(!S.sound||paused0){if(mus){clearInterval(mus.t);try{mus.out.gain.setTargetAtTime(0,AC.currentTime,.2)}catch(e){}mus=null}return}if(mus)return;const ac=actx();if(!ac)return;
+ const out=ac.createGain(),dl=ac.createDelay(1),fb=ac.createGain(),wet=ac.createGain();out.gain.value=.5;dl.delayTime.value=.46;fb.gain.value=.42;wet.gain.value=.55;out.connect(ac.destination);out.connect(dl);dl.connect(fb);fb.connect(dl);dl.connect(wet);wet.connect(ac.destination);
+ mus={out,next:ac.currentTime+.2,step:0,ix:3};const note=(f,t0,d,ty,v)=>{const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+.06);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(out);o.start(t0);o.stop(t0+d+.05)};
+ mus.t=setInterval(()=>{if(!mus||document.hidden)return;if(mus.next<ac.currentTime)mus.next=ac.currentTime+.05;while(mus.next<ac.currentTime+.6){const sc=FL().scale,t0=mus.next;mus.step%8===0&&note(sc[mus.step%16?3:0]/2,t0,3.2,'triangle',.05);if(Math.random()<.55){mus.ix=clamp(mus.ix+pick([-2,-1,-1,1,1,2]),0,7);note(sc[mus.ix],t0,1.8,'sine',.035)}mus.step++;mus.next+=.56}},150)}
+let paused0=true;
+
+/* ---------------- celebration particles ---------------- */
+const fxC=$('#fx'),fxG=fxC.getContext('2d');let parts=[],fxOn=false;
+function fxSize(){fxC.width=innerWidth;fxC.height=innerHeight}addEventListener('resize',fxSize);fxSize();
+function burst(x,y,n,cols){if(RM)return;cols=cols||['#ffd257','#ff8a3c','#fff','#6fe0a0','#5cc8ff','#d9a2ff'];for(let i=0;i<n;i++){const a=Math.random()*TAU,sp=2+Math.random()*9;parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-4,r:Math.random()*TAU,vr:(Math.random()-.5)*.5,s:4+Math.random()*7,c:pick(cols),life:50+Math.random()*40,star:Math.random()<.4})}if(!fxOn){fxOn=true;requestAnimationFrame(fxTick)}}
+function starPath(g,r){g.beginPath();for(let k=0;k<10;k++){const a=k*TAU/10-Math.PI/2,rr=k%2?r*.45:r;g.lineTo(Math.cos(a)*rr,Math.sin(a)*rr)}g.closePath()}
+function fxTick(){fxG.clearRect(0,0,fxC.width,fxC.height);parts=parts.filter(p=>p.life>0&&p.y<innerHeight+40);for(const p of parts){p.life--;p.vy+=.24;p.vx*=.985;p.x+=p.vx;p.y+=p.vy;p.r+=p.vr;fxG.save();fxG.translate(p.x,p.y);fxG.rotate(p.r);fxG.globalAlpha=Math.min(1,p.life/18);fxG.fillStyle=p.c;if(p.star){starPath(fxG,p.s);fxG.fill()}else fxG.fillRect(-p.s/2,-p.s/3,p.s,p.s*.66);fxG.restore()}parts.length?requestAnimationFrame(fxTick):(fxOn=false,fxG.clearRect(0,0,fxC.width,fxC.height))}
+function toast(msg,sub,cls){const d=document.createElement('div');d.className='toast '+(cls||'');d.innerHTML=esc(msg)+(sub?`<small>${esc(sub)}</small>`:'');$('#toasts').appendChild(d);while($('#toasts').children.length>3)$('#toasts').firstChild.remove();setTimeout(()=>d.remove(),3500)}
+
+/* ---------------- floor generation ---------------- */
+function seeded(seed){seed>>>=0;return()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296}}
+const N=21;let W=null;
+function buildFloor(depth){const rnd=seeded(depth*7919+101),g=Array.from({length:N},()=>new Uint8Array(N).fill(1)),inRoom=(x,y)=>x>=16&&y>=16;
+ const st=[[1,1]];g[1][1]=0;while(st.length){const [x,y]=st[st.length-1],nb=[[2,0],[-2,0],[0,2],[0,-2]].map(d=>[x+d[0],y+d[1]]).filter(p=>p[0]>0&&p[1]>0&&p[0]<N-1&&p[1]<N-1&&g[p[1]][p[0]]===1);if(!nb.length){st.pop();continue}const p=nb[Math.floor(rnd()*nb.length)];g[(y+p[1])/2][(x+p[0])/2]=0;g[p[1]][p[0]]=0;st.push(p)}
+ for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++)if(g[y][x]===1&&(x%2!==y%2)&&rnd()<.14)g[y][x]=0;
+ for(let k=0;k<3;k++){const cx=3+2*Math.floor(rnd()*5),cy=3+2*Math.floor(rnd()*5);for(let y=cy-1;y<=cy+1;y++)for(let x=cx-1;x<=cx+1;x++)g[y][x]=0}
+ for(let y=16;y<=20;y++)for(let x=16;x<=20;x++)g[y][x]=(x===16||y===16||x===20||y===20)?1:0;
+ g[18][15]=0;
+ const flood=()=>{const seen=new Set(),q=[[1,1]];while(q.length){const [x,y]=q.pop(),k=y*N+x;if(seen.has(k)||g[y][x]!==0)continue;seen.add(k);q.push([x+1,y],[x-1,y],[x,y+1],[x,y-1])}return seen};
+ for(let guard=0;guard<200;guard++){const seen=flood();let fixed=false;for(let y=1;y<N-1&&!fixed;y+=2)for(let x=1;x<N-1&&!fixed;x+=2){if(inRoom(x,y)||seen.has(y*N+x))continue;g[y][x]=0;for(const d of [[2,0],[-2,0],[0,2],[0,-2]]){const nx=x+d[0],ny=y+d[1];if(nx>0&&ny>0&&nx<N-1&&ny<N-1&&!inRoom(nx,ny)&&seen.has(ny*N+nx)){g[y+d[1]/2][x+d[0]/2]=0;fixed=true;break}}}if(!fixed)break}
+ const reach=flood();g[18][16]=2;
+ const cells=[];for(let y=1;y<N-1;y+=2)for(let x=1;x<N-1;x+=2)!inRoom(x,y)&&reach.has(y*N+x)&&(x+y>4)&&cells.push([x+.5,y+.5]);
+ const picked=[[1.5,1.5],[15.5,18.5]],far=()=>{let best=null,bd=-1;for(const c of cells){if(picked.includes(c))continue;const d=Math.min(...picked.map(p=>Math.hypot(p[0]-c[0],p[1]-c[1])))+rnd()*.8;if(d>bd){bd=d;best=c}}picked.push(best);return{x:best[0],y:best[1]}};
+ const guardians=[0,1,2,3].map(far),chests=[0,1,2,3,4].map(far),runes=[0,1,2].map(far);
+ const open=[];for(let y=1;y<N-1;y++)for(let x=1;x<N-1;x++)g[y][x]===0&&!inRoom(x,y)&&reach.has(y*N+x)&&open.push([x,y]);
+ const gems=[];for(let k=0;k<400&&gems.length<16;k++){const c=open[Math.floor(rnd()*open.length)],x=c[0]+.3+rnd()*.4,y=c[1]+.3+rnd()*.4;if(Math.hypot(x-1.5,y-1.5)>1.5&&picked.every(p=>Math.hypot(p[0]-x,p[1]-y)>.9)&&gems.every(q=>Math.hypot(q.x-x,q.y-y)>1.4))gems.push({x,y,k:Math.floor(rnd()*3)})}
+ const torches=[],decor=[],th=depth%5,low=[['🦴','🕸️','🪦','🍂'],['⚙️','🔩','🛢️','⚙️'],['🍄','🪨','🍄','🦎'],['📚','📜','🕯️','🪶'],['🪙','💰','🦴','🪙']][th];
+ for(const c of open){const walls=[[1,0],[-1,0],[0,1],[0,-1]].filter(d=>g[c[1]+d[1]][c[0]+d[0]]===1),r=rnd();if(walls.length&&r<.2){const d=walls[Math.floor(rnd()*walls.length)];torches.push({x:c[0]+.5+d[0]*.44,y:c[1]+.5+d[1]*.44})}else if(r<.34){const x=c[0]+.2+rnd()*.6,y=c[1]+.2+rnd()*.6;picked.every(p=>Math.hypot(p[0]-x,p[1]-y)>.8)&&decor.push({x,y,ch:low[Math.floor(rnd()*4)],h:.2+rnd()*.12})}}
+ [[17.2,17.2],[19.8,17.2],[17.2,19.8],[19.8,19.8]].forEach(p=>torches.push({x:p[0],y:p[1]}));
+ return{g,guardians,chests,runes,gems,torches,decor,boss:{x:18.6,y:18.5},seen:new Uint8Array(N*N),open:open.length+9}}
+function enterFloor(){if(!S.fl||S.fl.depth!==S.depth)S.fl={depth:S.depth,g:[0,0,0,0],ch:[],ru:[],gm:[],boss:0,door:0,seen:''};W=buildFloor(S.depth);if(S.fl.seen)for(let i=0;i<N*N;i++)W.seen[i]=S.fl.seen[i]==='1'?1:0;S.fl.door&&(W.g[18][16]=0);P.x=1.5;P.y=1.5;P.a=W.g[1][2]===0?0:Math.PI/2;pet.x=1.5;pet.y=1.5;art=null;S.best=Math.max(S.best,S.depth);hud();musicSync()}
+const solid=(x,y)=>{const r=W.g[Math.floor(y)];return!r||r[Math.floor(x)]!==0};
+const blocked=(x,y,r=.2)=>solid(x-r,y-r)||solid(x+r,y-r)||solid(x-r,y+r)||solid(x+r,y+r);
+function los(x,y){const dx=x-P.x,dy=y-P.y,n=Math.ceil(Math.hypot(dx,dy)/.1);for(let i=1;i<n;i++)if(solid(P.x+dx*i/n,P.y+dy*i/n))return false;return true}
+
+/* ---------------- textures ---------------- */
+function mk(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);return c}
+function wallTex(t,v,glow){return mk(256,256,g=>{g.scale(4,4);const r=seeded(t*131+v*17+3);
+ if(t===0){g.fillStyle='#2f3a36';g.fillRect(0,0,64,64);for(let row=0;row<4;row++)for(let c=-1;c<3;c++){const x=c*32+(row%2?16:0),sh=90+r()*40|0;g.fillStyle=`rgb(${sh-14},${sh+4},${sh-6})`;g.beginPath();g.roundRect(x+1,row*16+1,30,14,2);g.fill();g.fillStyle='rgba(255,255,255,.07)';g.fillRect(x+2,row*16+2,28,2)}
+  for(let k=0;k<26;k++){g.fillStyle=`rgba(${70+r()*40|0},${150+r()*60|0},${80+r()*30|0},.75)`;g.beginPath();g.ellipse(r()*64,r()<.6?r()*14:50+r()*14,2+r()*5,1.5+r()*2.5,0,0,TAU);g.fill()}}
+ else if(t===1){const gr=g.createLinearGradient(0,0,0,64);gr.addColorStop(0,'#9a7440');gr.addColorStop(1,'#5a4122');g.fillStyle=gr;g.fillRect(0,0,64,64);for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.strokeStyle='#3a2a14';g.lineWidth=1.5;g.strokeRect(x*32+1,y*32+1,30,30);g.fillStyle='rgba(255,220,150,.10)';g.fillRect(x*32+2,y*32+2,28,5);g.fillStyle='#d9b06a';[[4,4],[28,4],[4,28],[28,28]].forEach(p=>{g.beginPath();g.arc(x*32+p[0],y*32+p[1],1.6,0,TAU);g.fill()})}
+  g.fillStyle='#3d2c16';g.fillRect(0,44,64,7);g.fillStyle='#b98a48';g.fillRect(0,45,64,2);g.fillStyle='#3d2c16';[10,42].forEach(x=>g.fillRect(x,42,5,11))}
+ else if(t===2){g.fillStyle='#2b2850';g.fillRect(0,0,64,64);for(let k=0;k<70;k++){const sh=40+r()*40|0;g.fillStyle=`rgb(${sh},${sh-4},${sh+40})`;g.beginPath();g.ellipse(r()*64,r()*64,3+r()*8,2+r()*6,r()*3,0,TAU);g.fill()}
+  g.strokeStyle='#6fe6ff';g.lineWidth=1;g.shadowColor='#6fe6ff';g.shadowBlur=4;for(let k=0;k<4;k++){g.beginPath();let x=r()*64,y=0;g.moveTo(x,y);while(y<64){x+=(r()-.5)*14;y+=6+r()*8;g.lineTo(x,y)}g.stroke()}g.shadowBlur=0}
+ else if(t===3){g.fillStyle='#3a2416';g.fillRect(0,0,64,64);const cols=['#b0413e','#c98a2b','#3f7fa8','#4f9a6a','#7d5ab5','#d9c36a','#8a3d5c','#3a5a8a'];for(let sh=0;sh<3;sh++){const by=sh*21+19;g.fillStyle='#1e120a';g.fillRect(0,by-18,64,18);let bx=1;while(bx<62){const bw=4+Math.floor(r()*4),bh=11+Math.floor(r()*6);g.fillStyle=cols[Math.floor(r()*8)];g.fillRect(bx,by-bh,bw,bh);g.fillStyle='#f0d890';g.fillRect(bx,by-bh+3,bw,1.2);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(bx+bw-1,by-bh,1,bh);bx+=bw+1}g.fillStyle='#5a3a22';g.fillRect(0,by,64,3);g.fillStyle='#7a5232';g.fillRect(0,by,64,1)}}
+ else{g.fillStyle='#17101a';g.fillRect(0,0,64,64);for(let k=0;k<26;k++){const x=r()*64,y=r()*64,sh=22+r()*26|0;g.fillStyle=`rgb(${sh+8},${sh},${sh+6})`;g.beginPath();g.moveTo(x,y);g.lineTo(x+6+r()*12,y+r()*8);g.lineTo(x+r()*8,y+8+r()*10);g.fill()}
+  g.shadowColor='#ff6a1a';g.shadowBlur=5;for(let k=0;k<4;k++){g.strokeStyle=k%2?'#ffb23a':'#ff5a1a';g.lineWidth=1+r();g.beginPath();let x=r()*64,y=0;g.moveTo(x,y);while(y<64){x+=(r()-.5)*18;y+=5+r()*9;g.lineTo(x,y)}g.stroke()}g.shadowBlur=0}
+ if(v===1){g.shadowColor=glow;g.shadowBlur=6;g.fillStyle=glow;g.strokeStyle=glow;g.lineWidth=2;g.textAlign='center';g.textBaseline='middle';
+  if(t===0){g.fillStyle='rgba(10,20,16,.7)';g.shadowBlur=0;g.beginPath();g.roundRect(14,14,36,36,5);g.fill();g.shadowBlur=6;g.fillStyle=glow;g.font='bold 24px Georgia';g.fillText(['π','∑','∞','7'][Math.floor(r()*4)],32,33)}
+  else if(t===1){g.shadowBlur=0;g.fillStyle='#3a2a14';g.beginPath();for(let k=0;k<24;k++){const a=k*TAU/24,rr=k%2?17:21;g.lineTo(32+Math.cos(a)*rr,24+Math.sin(a)*rr)}g.fill();g.fillStyle='#d9a94e';g.beginPath();for(let k=0;k<24;k++){const a=k*TAU/24+.1,rr=k%2?14:18;g.lineTo(32+Math.cos(a)*rr,24+Math.sin(a)*rr)}g.fill();g.fillStyle='#3a2a14';g.beginPath();g.arc(32,24,5,0,TAU);g.fill()}
+  else if(t===2){[[18,56,9],[34,58,13],[48,55,8]].forEach(m=>{g.shadowBlur=0;g.fillStyle='#d8d0ee';g.fillRect(m[0]-1.5,m[1]-m[2],3,m[2]);g.shadowBlur=8;g.fillStyle=glow;g.beginPath();g.ellipse(m[0],m[1]-m[2],m[2]*.7,m[2]*.45,0,Math.PI,TAU);g.fill()})}
+  else if(t===3){g.shadowBlur=0;g.fillStyle='#241428';g.beginPath();g.roundRect(18,12,28,40,4);g.fill();g.shadowBlur=6;g.fillStyle=glow;g.font='bold 15px Georgia';['ᚠ','ᚱ','ᛟ'].forEach((c,i)=>g.fillText(c,32,21+i*12))}
+  else{g.shadowBlur=3;for(let k=0;k<22;k++){g.fillStyle=k%3?'#ffcf4a':'#fff0a0';g.beginPath();g.ellipse(8+r()*48,62-r()*14-(k/3),4,1.8,0,0,TAU);g.fill()}}
+  g.shadowBlur=0}
+ if(v===2){g.fillStyle='#4a2f1a';g.fillRect(6,4,52,60);for(let x=0;x<5;x++){g.fillStyle=x%2?'#5a3a20':'#523418';g.fillRect(8+x*10,6,9,58)}g.fillStyle='#2a2a30';[12,50].forEach(y=>g.fillRect(6,y,52,5));g.fillStyle='#8a8a96';[[10,14],[54,14],[10,52],[54,52]].forEach(p=>{g.beginPath();g.arc(p[0],p[1],1.6,0,TAU);g.fill()});g.shadowColor=glow;g.shadowBlur=8;g.strokeStyle=glow;g.lineWidth=2;g.beginPath();g.arc(32,32,10,0,TAU);g.stroke();g.beginPath();for(let k=0;k<4;k++){const a=k*TAU/4+TAU/8;g.moveTo(32,32);g.lineTo(32+Math.cos(a)*10,32+Math.sin(a)*10)}g.stroke();g.shadowBlur=0;g.fillStyle='#17101a';g.fillRect(0,0,6,64);g.fillRect(58,0,6,64);g.fillRect(0,0,64,4)}})}
+function flatTex(t,dark){const cv=mk(128,128,g=>{g.scale(2,2);const r=seeded(t*71+9);
+ if(t===0){g.fillStyle='#4a5650';g.fillRect(0,0,64,64);for(let y=0;y<2;y++)for(let x=0;x<2;x++){const sh=84+r()*26|0;g.fillStyle=`rgb(${sh-10},${sh},${sh-6})`;g.beginPath();g.roundRect(x*32+1.5,y*32+1.5,29,29,3);g.fill()}for(let k=0;k<60;k++){g.fillStyle=`rgba(${60+r()*30|0},${130+r()*50|0},${70+r()*20|0},.5)`;g.fillRect(r()*64,r()*64,1.5+r()*2,1.5+r()*2)}}
+ else if(t===1){g.fillStyle='#4f3b22';g.fillRect(0,0,64,64);for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=(x+y)%2?'#6a4f2c':'#5c4426';g.fillRect(x*32+1,y*32+1,30,30);g.strokeStyle='rgba(255,220,150,.12)';for(let k=4;k<30;k+=5){g.beginPath();g.moveTo(x*32+k,y*32+3);g.lineTo(x*32+k,y*32+29);g.stroke()}g.fillStyle='#c79a52';[[4,4],[28,28]].forEach(p=>{g.beginPath();g.arc(x*32+p[0],y*32+p[1],1.3,0,TAU);g.fill()})}}
+ else if(t===2){g.fillStyle='#262347';g.fillRect(0,0,64,64);for(let k=0;k<90;k++){const sh=36+r()*30|0;g.fillStyle=`rgb(${sh},${sh-2},${sh+34})`;g.beginPath();g.ellipse(r()*64,r()*64,2+r()*6,1.5+r()*4,r()*3,0,TAU);g.fill()}for(let k=0;k<26;k++){g.fillStyle=k%2?'rgba(111,230,255,.8)':'rgba(140,255,200,.7)';g.beginPath();g.arc(r()*64,r()*64,.7+r(),0,TAU);g.fill()}}
+ else if(t===3){for(let y=0;y<2;y++)for(let x=0;x<2;x++){g.fillStyle=(x+y)%2?'#6a2030':'#7c2a3a';g.fillRect(x*32,y*32,32,32);g.strokeStyle='rgba(233,185,85,.5)';g.lineWidth=1;g.strokeRect(x*32+3.5,y*32+3.5,25,25);g.fillStyle='#e9b955';g.beginPath();g.moveTo(x*32+16,y*32+10);g.lineTo(x*32+22,y*32+16);g.lineTo(x*32+16,y*32+22);g.lineTo(x*32+10,y*32+16);g.fill()}}
+ else{g.fillStyle='#1c1418';g.fillRect(0,0,64,64);for(let k=0;k<40;k++){const sh=26+r()*22|0;g.fillStyle=`rgb(${sh+6},${sh},${sh+2})`;g.beginPath();g.ellipse(r()*64,r()*64,3+r()*7,2+r()*5,r()*3,0,TAU);g.fill()}g.strokeStyle='#ff6a1a';g.lineWidth=1;for(let k=0;k<3;k++){g.beginPath();let x=r()*64,y=0;g.moveTo(x,y);while(y<64){x+=(r()-.5)*16;y+=6+r()*8;g.lineTo(x,y)}g.stroke()}}});
+ const d=cv.getContext('2d').getImageData(0,0,128,128).data;if(dark)for(let i=0;i<d.length;i+=4){d[i]=d[i]*.42;d[i+1]=d[i+1]*.4;d[i+2]=d[i+2]*.46}return new Uint32Array(d.buffer)}
+let art=null,sprC={};
+function ensureArt(){const t=theme();if(art&&art.t===t)return;const f=FL();art={t,w:[wallTex(t,0,f.glow),wallTex(t,1,f.glow),wallTex(t,2,f.glow)],fl:flatTex(t,false),ce:flatTex(t,true),fog:[]};for(let lv=0;lv<32;lv++){const al=Math.min(.97,(lv&15)/15),side=lv>15,a2=side?al+.2*(1-al):al,kf=a2?al/a2:1;art.fog[lv]=`rgba(${f.fog.map(v=>Math.round(v*kf)).join(',')},${a2.toFixed(3)})`}}
+function spr(ch){let c=sprC[ch];if(!c)c=sprC[ch]=mk(160,160,g=>{g.font='118px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(ch,80,88)});return c}
+
+/* ---------------- player, movement ---------------- */
+const P={x:1.5,y:1.5,a:.5,js:0,jt:0},pet={x:1.5,y:1.5,side:1},keys={};
+let paused=true,vf=0,vs=0,vt=0,bobPh=0,moveAmt=0,jz=0,jv=0,stepAcc=0,jumpReq=false,clock=0,bump=0,target=null;
+const T=$('#game'),E=T.getContext('2d');
+function resize(){const dpr=Math.min(devicePixelRatio||1,1.5);T.width=Math.floor(innerWidth*dpr);T.height=Math.floor(innerHeight*dpr);E.setTransform(dpr,0,0,dpr,0,0)}addEventListener('resize',resize);resize();
+function update(dt){clock+=dt;if(!W)return;if(!$('#welcome').classList.contains('hidden')){RM||(P.a=(P.a+dt*.08)%TAU);return}if(paused){vf=vs=vt=0;moveAmt*=.85;return}
+ let fw=0,st=0,tn=0;(keys.KeyW||keys.ArrowUp)&&(fw+=1);(keys.KeyS||keys.ArrowDown)&&(fw-=1);keys.KeyA&&(st-=1);keys.KeyD&&(st+=1);keys.ArrowLeft&&(tn-=1);keys.ArrowRight&&(tn+=1);
+ fw=clamp(fw+P.js,-1,1);tn=clamp(tn+P.jt,-1.2,1.2);const ka=Math.min(1,dt*9);vf+=(fw-vf)*ka;vs+=(st-vs)*ka;vt+=(tn-vt)*Math.min(1,dt*13);P.a=(P.a+vt*dt*2.3+TAU)%TAU;
+ const sp=2.7*dt,ca=Math.cos(P.a),sa=Math.sin(P.a),mx=(ca*vf-sa*vs)*sp,my=(sa*vf+ca*vs)*sp,ox=P.x,oy=P.y;
+ const okx=!blocked(P.x+mx,P.y);okx&&(P.x+=mx);const oky=!blocked(P.x,P.y+my);oky&&(P.y+=my);Math.abs(mx)+Math.abs(my)>.004&&!okx&&!oky&&(bump=Math.max(bump,.12));
+ const moved=Math.hypot(P.x-ox,P.y-oy);moveAmt+=((sp>0?Math.min(1,moved/sp):0)-moveAmt)*Math.min(1,dt*8);bobPh+=moved*6.4;stepAcc+=moved;if(stepAcc>.9&&jz===0){stepAcc=0;tone(90+Math.random()*30,.05,'triangle',.03)}
+ if((keys.Space||jumpReq)&&jz===0&&jv===0){jv=2.6;S.st.jumps++;tone(380,.14,'sine',.04);tone(560,.16,'sine',.04,.06);S.st.jumps===50&&checkAch()}jumpReq=false;if(jv||jz>0){jz+=jv*dt;jv-=7.6*dt;if(jz<=0){jz=0;jv=0;tone(120,.07,'sine',.04)}}
+ if(S.shop.pet){const fd=1.05,sd=.42,side=pet.side,spot=q=>{const x=P.x+ca*fd-sa*sd*q,y=P.y+sa*fd+ca*sd*q;return!solid(x,y)&&!solid((x+P.x)/2,(y+P.y)/2)&&!blocked(x,y,.12)?[x,y]:null};let tg=spot(side)||spot(-side);tg?(pet.side=spot(side)?side:-side):(tg=[P.x-ca*.5,P.y-sa*.5]);const lp=Math.min(1,dt*3.2),nx=pet.x+(tg[0]-pet.x)*lp,ny=pet.y+(tg[1]-pet.y)*lp;solid(nx,ny)?(pet.x=tg[0],pet.y=tg[1]):(pet.x=nx,pet.y=ny)}
+ const reachG=S.shop.pet==='pet1'?1.5:.55;W.gems.forEach((gm,i)=>{if(S.fl.gm.includes(i))return;const d=Math.hypot(gm.x-P.x,gm.y-P.y);if(d<reachG&&d>.5&&los(gm.x,gm.y)){gm.x+=(P.x-gm.x)*dt*4;gm.y+=(P.y-gm.y)*dt*4}if(d<.55){S.fl.gm.push(i);const v=[2,3,5][gm.k]+cycle();gainGems(v);chime([1047,1397],'triangle',.05);burst(innerWidth/2,innerHeight*.62,8,['#7fe9ff','#fff','#ffd257']);toast(`💎 +${v} gem${v>1?'s':''}`);save()}});
+ const cx=Math.floor(P.x),cy=Math.floor(P.y);let ch=false;for(let y=cy-2;y<=cy+2;y++)for(let x=cx-2;x<=cx+2;x++)if(x>=0&&y>=0&&x<N&&y<N&&!W.seen[y*N+x]&&Math.hypot(x+.5-P.x,y+.5-P.y)<2.7){W.seen[y*N+x]=1;ch=true}
+ if(ch){let c=0;for(let y=0;y<N;y++)for(let x=0;x<N;x++)W.g[y][x]===0&&W.seen[y*N+x]&&c++;const pc=Math.min(100,Math.round(c/W.open*100));if(pc>S.st.explored||pc>=90&&S.st.explored<90){S.st.explored=Math.max(S.st.explored,pc);pc>=90&&checkAch()}}}
+
+/* ---------------- renderer ---------------- */
+const PL=.62,QF=[[272,136],[200,100],[144,72]],QC=[1,1.5,2.2];let qual=0,ema=16,lastT=0,qHold=0;
+const flC=mk(272,272,()=>{}),flG=flC.getContext('2d'),flI=flG.createImageData(272,272),fl32=new Uint32Array(flI.data.buffer),zbuf=new Float32Array(1024);
+const amb=Array.from({length:34},()=>({x:Math.random(),y:Math.random(),vx:(Math.random()-.5)*.02,vy:-.01-Math.random()*.03,s:1+Math.random()*2.5,ph:Math.random()*TAU}));
+function lampCol(){const it=SHOP.find(i=>i.id===S.shop.lamp);if(it&&it.col)return it.col;const h=clock*30%360,f=n=>{const k=(n+h/60)%6;return Math.round(255*(1-.55*Math.max(0,Math.min(k,4-k,1))))};return[f(5),f(3),f(1)]}
+function plate(txt,cx,cy,fs,mark,tm){E.font=`700 ${fs}px ui-rounded,"Arial Rounded MT Bold","Trebuchet MS",sans-serif`;const tw=E.measureText(txt).width+fs*1.4,ph=fs*1.9;E.fillStyle='rgba(18,13,31,.88)';E.beginPath();E.roundRect(cx-tw/2,cy-ph/2,tw,ph,ph/2);E.fill();E.strokeStyle='#e9b955';E.lineWidth=1.5;E.stroke();E.fillStyle='#f3e9d2';E.fillText(txt,cx,cy+1);
+ if(mark==='!'){const by=cy-ph*1.3-Math.abs(Math.sin(tm*3))*fs*.5;E.fillStyle='#ffcf3d';E.beginPath();E.arc(cx,by,fs*.85,0,TAU);E.fill();E.fillStyle='#4a2a00';E.font=`800 ${fs*1.2}px ui-rounded,sans-serif`;E.fillText('!',cx,by+1)}else if(mark){E.font=`${fs*1.3}px serif`;E.fillText(mark,cx+tw/2,cy-ph/2)}}
+function render(){if(!W)return;const sw=innerWidth,sh=innerHeight,f=FL(),nowT=performance.now();ensureArt();
+ if(lastT){const dtm=Math.min(100,nowT-lastT);ema+=(dtm-ema)*.05;qHold++;if(qHold>90){if(ema>25&&qual<2){qual++;qHold=0;ema=18}else if(ema<13.5&&qual>0&&qHold>600){qual--;qHold=0}}}lastT=nowT;
+ const FWq=QF[qual][0],FHq=QF[qual][1],tm=RM?0:nowT/1e3,flick=RM?1:.97+.03*Math.sin(tm*9)+.015*Math.sin(tm*23.7),fogD=8.2*flick;bump=Math.max(0,bump-.016);
+ const bob=RM?0:Math.sin(bobPh)*sh*.006*moveAmt,HZ=sh*.5+bob,camH=.5+jz*.8,dirx=Math.cos(P.a),diry=Math.sin(P.a),plx=-diry*PL,ply=dirx*PL,px=P.x,py=P.y,SY=clamp(sw/(2*PL),sh*.7,sh*1.15),g=W.g;
+ const fr=f.fog[0],fg=f.fog[1],fb=f.fog[2],fogPix=(255<<24)|(fb<<16)|(fg<<8)|fr;
+ for(let half=0;half<2;half++){const tex=half?art.fl:art.ce,hgt=half?camH:1-camH,span=half?sh-HZ:HZ;
+  for(let j=0;j<FHq;j++){const yy=(j+.5)/FHq*span,dist=hgt*SY/yy,ff=Math.min(256,dist/fogD*256|0),row=(half?FHq+j:FHq-1-j)*272;if(ff>=250){fl32.fill(fogPix,row,row+FWq);continue}
+   let lx=px+dist*(dirx-plx),ly=py+dist*(diry-ply);const stx=dist*2*plx/FWq,sty=dist*2*ply/FWq,inv=256-ff;
+   for(let i=0;i<FWq;i++){const col=tex[(((ly*128)&127)<<7)|((lx*128)&127)];fl32[row+i]=(255<<24)|((((col>>16&255)*inv+fb*ff)>>8)<<16)|((((col>>8&255)*inv+fg*ff)>>8)<<8)|(((col&255)*inv+fr*ff)>>8);lx+=stx;ly+=sty}}}
+ flG.putImageData(flI,0,0,0,0,FWq,FHq*2);E.imageSmoothingEnabled=true;E.drawImage(flC,0,0,FWq,FHq,0,0,sw,HZ);E.drawImage(flC,0,FHq,FWq,FHq,0,HZ,sw,sh-HZ);
+ const colW=Math.max(2,Math.ceil(sw/460*QC[qual])),NC=Math.min(1024,Math.ceil(sw/colW));
+ for(let c=0;c<NC;c++){const camX=2*(c+.5)/NC-1,rdx=dirx+plx*camX,rdy=diry+ply*camX,ddx=Math.abs(1/rdx),ddy=Math.abs(1/rdy);let mapX=px|0,mapY=py|0,stepX,stepY,sdx,sdy,side=0,hit=1;
+  rdx<0?(stepX=-1,sdx=(px-mapX)*ddx):(stepX=1,sdx=(mapX+1-px)*ddx);rdy<0?(stepY=-1,sdy=(py-mapY)*ddy):(stepY=1,sdy=(mapY+1-py)*ddy);
+  for(let it=0;it<64;it++){sdx<sdy?(sdx+=ddx,mapX+=stepX,side=0):(sdy+=ddy,mapY+=stepY,side=1);const rw=g[mapY];if(!rw){hit=1;break}hit=rw[mapX];if(hit!==0)break}
+  let perp=side===0?sdx-ddx:sdy-ddy;perp<.06&&(perp=.06);zbuf[c]=perp;let wx=side===0?py+perp*rdy:px+perp*rdx;wx-=Math.floor(wx);((side===0&&rdx<0)||(side===1&&rdy>0))&&(wx=1-wx);
+  const lh=SY/perp,bot=HZ+lh*camH,top=bot-lh;E.drawImage(art.w[hit===2?2:(mapX*7+mapY*13)%6===0?1:0],Math.min(255,wx*256|0),0,1,256,c*colW,top,colW,lh);
+  const lv=Math.min(15,perp/fogD*15|0)+(side?16:0);if(lv){E.fillStyle=art.fog[lv];E.fillRect(c*colW,top-.5,colW,lh+1)}}
+ /* sprites */
+ const invD=-1/PL,items=[],proj=(wx,wy)=>{const dx=wx-px,dy=wy-py,tY=invD*(-ply*dx+plx*dy);if(tY<.14||tY>13)return null;return{sx:sw/2*(1+invD*(diry*dx-dirx*dy)/tY),unit:SY/tY,dep:tY}};
+ const add=(wx,wy,halfU,draw)=>{const pr=proj(wx,wy);if(!pr)return;const half=pr.unit*halfU;if(pr.sx<-half||pr.sx>sw+half)return;const c0=Math.max(0,Math.floor((pr.sx-half)/colW)),c1=Math.min(NC-1,Math.floor((pr.sx+half)/colW));let lo=-1,hi=-1;for(let c=c0;c<=c1;c++)if(zbuf[c]>pr.dep){lo<0&&(lo=c);hi=c}if(lo<0)return;items.push({pr,x0:lo*colW,x1:(hi+1)*colW,full:lo===c0&&hi===c1,draw})};
+ const fade=d=>clamp(1.15-d/fogD,0,1),gy=pr=>HZ+pr.unit*camH,lamp=lampCol();
+ const halo=(x,y,r,col,a)=>{const gr=E.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,`rgba(${col},${a})`);gr.addColorStop(1,`rgba(${col},0)`);E.fillStyle=gr;E.beginPath();E.arc(x,y,r,0,TAU);E.fill()};
+ for(const t of W.torches)add(t.x,t.y,.3,pr=>{const u=pr.unit,x=pr.sx,y=gy(pr)-u*.62,fl2=RM?1:.85+.15*Math.sin(tm*11+t.x*7)+.08*Math.sin(tm*27+t.y);E.globalAlpha=Math.min(1,fade(pr.dep)+.35);halo(x,y,u*.55*fl2,'255,170,70',.5);E.fillStyle='#3a2a1a';E.fillRect(x-u*.015,y,u*.03,u*.16);E.fillStyle='#ff9a2a';E.beginPath();E.moveTo(x,y-u*.13*fl2);E.quadraticCurveTo(x+u*.06,y-u*.02,x,y+u*.02);E.quadraticCurveTo(x-u*.06,y-u*.02,x,y-u*.13*fl2);E.fill();E.fillStyle='#fff1a8';E.beginPath();E.ellipse(x,y-u*.02,u*.018,u*.04,0,0,TAU);E.fill();E.globalAlpha=1});
+ for(const d of W.decor)add(d.x,d.y,d.h*.5,pr=>{if(pr.dep>9)return;const sz=pr.unit*d.h;E.globalAlpha=fade(pr.dep)*clamp((pr.dep-.3)/.6,0,1);E.drawImage(spr(d.ch),pr.sx-sz/2,gy(pr)-sz,sz,sz);E.globalAlpha=1});
+ W.gems.forEach((gm,i)=>{if(S.fl.gm.includes(i))return;add(gm.x,gm.y,.15,pr=>{const u=pr.unit,s=u*.09,x=pr.sx,y=gy(pr)-u*.3+Math.sin(tm*2.4+gm.x*5)*u*.03,col=[['#7fe9ff','#2aa6d9'],['#ff9be0','#c94aa8'],['#ffe27a','#d99a1a']][gm.k];E.globalAlpha=Math.min(1,fade(pr.dep)+.3);halo(x,y,s*3,gm.k===0?'127,233,255':gm.k===1?'255,155,224':'255,226,122',.5);E.save();E.translate(x,y);E.scale(.55+.45*Math.abs(Math.cos(tm*1.6+gm.y*3)),1);E.fillStyle=col[1];E.beginPath();E.moveTo(0,-s*1.3);E.lineTo(s,-s*.3);E.lineTo(0,s*1.3);E.lineTo(-s,-s*.3);E.fill();E.fillStyle=col[0];E.beginPath();E.moveTo(0,-s*1.3);E.lineTo(s,-s*.3);E.lineTo(0,0);E.lineTo(-s,-s*.3);E.fill();E.fillStyle='rgba(255,255,255,.8)';E.beginPath();E.moveTo(0,-s*1.3);E.lineTo(-s,-s*.3);E.lineTo(-s*.3,-s*.3);E.fill();E.restore();E.globalAlpha=1})});
+ W.chests.forEach((c,i)=>add(c.x,c.y,.3,pr=>{const u=pr.unit,w=u*.42,h=u*.26,x=pr.sx,b=gy(pr),open=S.fl.ch.includes(i);E.globalAlpha=fade(pr.dep)*(open?.6:1);open||halo(x,b-h*.6,w*1.1,'255,200,90',.3+.1*Math.sin(tm*3));E.fillStyle='#6b3f1c';E.beginPath();E.roundRect(x-w/2,b-h,w,h,w*.06);E.fill();E.fillStyle='#8a5526';E.beginPath();open?E.roundRect(x-w/2,b-h*1.75,w,h*.5,w*.1):E.roundRect(x-w/2,b-h*1.35,w,h*.5,[w*.2,w*.2,0,0]);E.fill();E.fillStyle='#e9b955';E.fillRect(x-w/2,b-h*.92,w,h*.1);[-.36,.36].forEach(o=>E.fillRect(x+w*o-w*.04,b-h*(open?1.75:1.35),w*.08,h*(open?1.75:1.35)));if(open){E.fillStyle='#17101a';E.fillRect(x-w*.44,b-h*1.22,w*.88,h*.26)}else{E.fillStyle='#fff3c4';E.beginPath();E.arc(x,b-h*.86,w*.07,0,TAU);E.fill()}E.globalAlpha=1}));
+ W.runes.forEach((c,i)=>add(c.x,c.y,.25,pr=>{const u=pr.unit,w=u*.3,h=u*.6,x=pr.sx,b=gy(pr),read=S.fl.ru.includes(i);E.globalAlpha=fade(pr.dep);read||halo(x,b-h*.55,w*1.6,'180,150,255',.35+.12*Math.sin(tm*2.5));E.fillStyle='#4a4660';E.beginPath();E.moveTo(x-w/2,b);E.lineTo(x-w*.42,b-h*.8);E.quadraticCurveTo(x,b-h*1.1,x+w*.42,b-h*.8);E.lineTo(x+w/2,b);E.fill();E.fillStyle='#5c5876';E.beginPath();E.moveTo(x-w*.3,b);E.lineTo(x-w*.28,b-h*.76);E.quadraticCurveTo(x-w*.1,b-h*.98,x,b-h*.95);E.lineTo(x,b);E.fill();E.fillStyle=read?'#8a86a6':f.glow;E.font=`700 ${h*.34}px Georgia,serif`;E.fillText('ᛟ',x,b-h*.5);E.globalAlpha=1}));
+ W.guardians.forEach((c,i)=>add(c.x,c.y,.45,pr=>{const gd=f.guardians[i],done=S.fl.g[i],sz=Math.min(sh*.5,sw*.7,pr.unit*.74),b=gy(pr),cy=b-sz*.55+Math.sin(tm*2+c.x*3)*sz*.03;E.globalAlpha=fade(pr.dep);E.save();E.translate(pr.sx,b);E.scale(1,.24);halo(0,0,sz*.62,done?'150,150,170':'255,214,120',done?.3:.6);E.restore();done||halo(pr.sx,cy,sz*.7,'255,220,150',.12);E.globalAlpha*=done?.7:1;E.drawImage(spr(gd[0]),pr.sx-sz/2,cy-sz/2,sz,sz);E.globalAlpha=1;pr.dep<7&&plate(gd[1],pr.sx,Math.max(TOUCH?150:112,cy-sz*.68),clamp(sz*.11,11,20),done?'✅':pr.dep<6?'!':'',tm)}));
+ if(S.fl.door||true)add(W.boss.x,W.boss.y,.7,pr=>{const b=gy(pr);if(S.fl.boss){const sz=Math.min(sh*.7,pr.unit*.9),cy=b-sz*.5;E.save();E.translate(pr.sx,cy);halo(0,0,sz*.6,'255,255,255',.5);for(let k=0;k<5;k++){E.strokeStyle=`rgba(${lamp.join(',')},${.9-k*.15})`;E.lineWidth=Math.max(2,sz*.03);E.beginPath();E.ellipse(0,sz*.2*(k/5),sz*(.36-k*.05),sz*(.5-k*.07),0,0,TAU);E.stroke()}E.fillStyle='#fff';E.font=`800 ${sz*.2}px ui-rounded,sans-serif`;E.fillText('▼',0,sz*.02+Math.sin(tm*4)*sz*.03);E.restore();pr.dep<8&&plate('Stairs down',pr.sx,Math.max(112,cy-sz*.62),clamp(sz*.08,11,20),'',tm)}
+  else{const bs=f.boss,sz=Math.min(sh*.62,sw*.85,pr.unit*1.1),cy=b-sz*.52+Math.sin(tm*1.6)*sz*.03;E.save();E.translate(pr.sx,b);E.scale(1,.24);halo(0,0,sz*.7,'255,80,60',.6);E.restore();halo(pr.sx,cy,sz*.75*(1+.05*Math.sin(tm*3)),'255,70,50',.22);E.drawImage(spr(bs[0]),pr.sx-sz/2,cy-sz/2,sz,sz);pr.dep<8&&plate(bs[1],pr.sx,Math.max(112,cy-sz*.64),clamp(sz*.08,11,20),'!',tm)}});
+ if(S.shop.pet)add(pet.x,pet.y,.2,pr=>{const pz=Math.min(pr.unit*.36,sw*.16),b=gy(pr),it=SHOP.find(i=>i.id===S.shop.pet);E.fillStyle='rgba(0,0,0,.3)';E.beginPath();E.ellipse(pr.sx,b,pz*.34,pz*.09,0,0,TAU);E.fill();E.drawImage(spr(it.e),pr.sx-pz/2,b-pz-Math.abs(Math.sin(tm*6))*pz*.06*moveAmt,pz,pz)});
+ items.sort((a,b)=>b.pr.dep-a.pr.dep);E.textAlign='center';E.textBaseline='middle';for(const it of items){if(it.full)it.draw(it.pr);else{E.save();E.beginPath();E.rect(it.x0,0,it.x1-it.x0,sh);E.clip();it.draw(it.pr);E.restore()}}
+ /* motes */
+ if(!RM)for(const p of amb){const ax=((p.x+tm*p.vx-P.a*.3)%1+1)%1*sw,ay=((p.y+tm*p.vy)%1+1)%1*sh,tw=.25+.25*Math.sin(tm*2+p.ph);E.fillStyle=theme()===4?`rgba(255,140,60,${tw+.2})`:theme()===2?`rgba(120,235,255,${tw})`:`rgba(255,230,180,${tw*.7})`;E.beginPath();E.arc(ax,ay,p.s*.6,0,TAU);E.fill()}
+ /* lantern light + vignette */
+ const lg=E.createRadialGradient(sw/2,sh*.55,0,sw/2,sh*.55,Math.max(sw,sh)*.7);lg.addColorStop(0,`rgba(${lamp.join(',')},${(.10*flick).toFixed(3)})`);lg.addColorStop(.45,`rgba(${lamp.join(',')},.03)`);lg.addColorStop(1,'rgba(0,0,0,.62)');E.fillStyle=lg;E.fillRect(0,0,sw,sh);
+ jz>0&&!RM&&(E.fillStyle=`rgba(255,255,255,${(jz*.08).toFixed(3)})`,E.fillRect(0,0,sw,sh));
+ findTarget();if(!paused){drawMini(sw);drawCompass(sw,sh,tm)}
+ bump>0&&(E.strokeStyle=`rgba(255,200,120,${Math.min(.5,bump*3)})`,E.lineWidth=8,E.strokeRect(8,8,sw-16,sh-16))}
+function candidates(){const c=[],f=FL();W.guardians.forEach((p,i)=>c.push({t:'guardian',i,x:p.x,y:p.y,e:f.guardians[i][0],name:f.guardians[i][1],how:S.fl.g[i]?'Practise again':'Take the trial',pri:S.fl.g[i]?1:0}));W.chests.forEach((p,i)=>S.fl.ch.includes(i)||c.push({t:'chest',i,x:p.x,y:p.y,e:'🧰',name:'Riddle chest',how:'Answer to open',pri:0}));W.runes.forEach((p,i)=>S.fl.ru.includes(i)||c.push({t:'rune',i,x:p.x,y:p.y,e:'📜',name:'Rune stone',how:'Read the carving',pri:0}));
+ if(!S.fl.door){const n=S.fl.g.filter(Boolean).length;c.push({t:'door',x:16.2,y:18.5,e:'🚪',name:'The sealed door',how:n>=4?'Unseal with your 4 sigils':`Needs 4 sigils (you have ${n})`,pri:0,nolos:1})}else if(!S.fl.boss)c.push({t:'boss',x:W.boss.x,y:W.boss.y,e:f.boss[0],name:f.boss[1],how:'Challenge the boss',pri:0});else c.push({t:'stairs',x:W.boss.x,y:W.boss.y,e:'⬇️',name:'Stairs down',how:'Descend to the next floor',pri:0});return c}
+function findTarget(){const ang=(x,y)=>{let d=Math.atan2(y-P.y,x-P.x)-P.a;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;return Math.abs(d)};target=paused?null:candidates().map(c=>({c,d:Math.hypot(c.x-P.x,c.y-P.y)})).filter(v=>v.d<1.9&&ang(v.c.x,v.c.y)<.75&&(v.c.nolos||los(v.c.x,v.c.y))).sort((a,b)=>a.c.pri-b.c.pri||a.d-b.d).map(v=>v.c)[0]||null;
+ const pr=$('#prompt');if(target){pr.classList.remove('hidden');$('#pIcon').textContent=target.e;$('#pName').textContent=target.name;$('#pHow').textContent=(TOUCH?'Tap USE: ':'Press E: ')+target.how}else pr.classList.add('hidden')}
+function nextGoal(){const g=W.guardians.map((p,i)=>({p,i})).filter(v=>!S.fl.g[v.i]).sort((a,b)=>Math.hypot(a.p.x-P.x,a.p.y-P.y)-Math.hypot(b.p.x-P.x,b.p.y-P.y))[0];if(g)return{x:g.p.x,y:g.p.y,e:FL().guardians[g.i][0]};if(!S.fl.door)return{x:15.5,y:18.5,e:'🚪'};return{x:W.boss.x,y:W.boss.y,e:S.fl.boss?'⬇️':FL().boss[0]}}
+function drawCompass(sw,sh,tm){const t=nextGoal(),d=Math.hypot(t.x-P.x,t.y-P.y);let rel=Math.atan2(t.y-P.y,t.x-P.x)-P.a;while(rel>Math.PI)rel-=TAU;while(rel<-Math.PI)rel+=TAU;if(Math.abs(rel)<.25&&d<3)return;const gx=sw/2+Math.sin(rel)*Math.min(sw*.3,200),gy=sh*.16+Math.sin(tm*3)*3;E.save();E.translate(gx,gy);E.fillStyle='rgba(18,13,31,.85)';E.strokeStyle='#e9b955';E.lineWidth=2;E.beginPath();E.arc(0,0,22,0,TAU);E.fill();E.stroke();E.drawImage(spr(t.e),-15,-15,30,30);E.rotate(Math.abs(rel)>2.4?Math.PI/2:clamp(rel,-1.3,1.3)-Math.PI/2);E.fillStyle='#ffb04a';E.beginPath();E.moveTo(38,0);E.lineTo(27,-8);E.lineTo(27,8);E.fill();E.restore()}
+function mapDraw(G,sc,all){const f=FL();for(let y=0;y<N;y++)for(let x=0;x<N;x++){if(!W.seen[y*N+x])continue;const v=W.g[y][x];G.fillStyle=v===1?'#6d5a94':v===2?'#e9b955':'#2a2046';G.fillRect(x*sc,y*sc,sc+.5,sc+.5)}
+ const dot=(p,col,r)=>{if(!W.seen[Math.floor(p.y)*N+Math.floor(p.x)])return;G.fillStyle=col;G.beginPath();G.arc(p.x*sc,p.y*sc,r*sc,0,TAU);G.fill()};
+ W.gems.forEach((p,i)=>S.fl.gm.includes(i)||dot(p,'#7fe9ff',.16));W.chests.forEach((p,i)=>S.fl.ch.includes(i)||dot(p,'#ffb04a',.3));W.runes.forEach((p,i)=>S.fl.ru.includes(i)||dot(p,'#c9a8ff',.28));W.guardians.forEach((p,i)=>dot(p,S.fl.g[i]?'#6fe0a0':'#ff6b9a',.36));dot(W.boss,S.fl.boss?'#fff':'#ff4a3a',.5)}
+function drawMini(sw){const small=sw<=720||TOUCH,rad=small?40:54,cx=(small?10:14)+rad,cy=(small?86:98)+rad,sc=rad/5.5;E.save();E.beginPath();E.arc(cx,cy,rad,0,TAU);E.fillStyle='rgba(7,5,13,.8)';E.fill();E.clip();E.translate(cx,cy);E.rotate(-P.a-Math.PI/2);E.translate(-P.x*sc,-P.y*sc);mapDraw(E,sc);E.restore();E.save();E.translate(cx,cy);E.fillStyle='#ffb04a';E.beginPath();E.moveTo(0,-8);E.lineTo(6,6);E.lineTo(0,3);E.lineTo(-6,6);E.fill();E.strokeStyle='#e9b955';E.lineWidth=2.5;E.beginPath();E.arc(0,0,rad,0,TAU);E.stroke();E.restore()}
+
+/* ---------------- HUD, XP, gems, achievements ---------------- */
+function hud(){const f=FL(),L=levelOf(S.xp),lo=L>1?xpFor(L-1):0,hi=xpFor(L);$('#hDepth').textContent=`FLOOR ${S.depth+1}`+(cycle()?` · DEPTH ${'I'.repeat(cycle()+1)}`:'');$('#hFloor').textContent=f.name;$('#hSig').innerHTML=S.fl?S.fl.g.map(v=>`<i class="${v?'on':''}"></i>`).join(''):'';$('#hSig').setAttribute('aria-label',`${S.fl?S.fl.g.filter(Boolean).length:0} of 4 sigils`);
+ $('#hGems span').textContent=fmt(S.gems);$('#hLv').textContent=L;$('#hRank').textContent=RANKS[Math.min(RANKS.length-1,Math.floor((L-1)/2))];$('#hXp').style.width=Math.round((S.xp-lo)/(hi-lo)*100)+'%';$('#soundBtn').textContent=S.sound?'🔊':'🔇';
+ const n=$('#nRel'),c=Object.keys(S.relics).length;n.textContent=c;n.classList.toggle('hidden',!c)}
+function gainGems(n){n=Math.round(n);S.gems+=n;S.st.gemsAll+=n;const p=$('#hGems');p.classList.remove('pop');void p.offsetWidth;p.classList.add('pop');hud();checkAch()}
+function gainXP(n){const before=levelOf(S.xp);S.xp+=Math.round(n);const after=levelOf(S.xp);if(after>before){S.gems+=15;S.st.gemsAll+=15;setTimeout(()=>{toast(`⭐ Level ${after}! ${RANKS[Math.min(RANKS.length-1,Math.floor((after-1)/2))]}`,'+15 gems');chime([523,659,784,1047,1319],'triangle');burst(innerWidth/2,innerHeight*.3,60)},500)}hud()}
+function checkAch(){let any=false;for(const a of ACH)if(!S.ach.includes(a.id)&&a.test(S)){S.ach.push(a.id);S.gems+=10;S.st.gemsAll+=10;any=true;const d=S.ach.length;setTimeout(()=>{toast(`${a.e} Trophy: ${a.name}`,`${a.desc} · +10 gems`,'ach');chime([784,988,1175,1568],'triangle',.06);burst(innerWidth/2,90,30,['#ffd257','#fff3c4','#ffb04a'])},700+300*(d%4))}any&&(hud(),save())}
+function rollRelic(min){const order=['common','rare','epic','legendary'],from=order.indexOf(min||'common');let pool=order.slice(from),tot=pool.reduce((t,k)=>t+RARITY[k].w,0),r=Math.random()*tot,rar=pool[0];for(const k of pool){r-=RARITY[k].w;if(r<=0){rar=k;break}}
+ const cands=RELICS.filter(x=>x.rar===rar),fresh=cands.filter(x=>!S.relics[x.id]),rel=pick(fresh.length&&Math.random()<.8?fresh:cands),dupe=!!S.relics[rel.id];S.relics[rel.id]=(S.relics[rel.id]||0)+1;return{rel,dupe}}
+
+/* ---------------- modals ---------------- */
+function openM(id){paused=true;P.js=P.jt=0;for(const k in keys)keys[k]=false;$$('.modal').forEach(m=>m.classList.add('hidden'));$('#'+id).classList.remove('hidden');$('#prompt').classList.add('hidden');document.body.classList.add('mo')}
+function closeM(){document.body.classList.remove('mo');$$('.modal').forEach(m=>m.classList.add('hidden'));paused=false;Q=null;T.focus&&T.focus()}
+function talk(face,kind,name,text,go,goLabel){$('#tFace').textContent=face;$('#tKind').textContent=kind;$('#tName').textContent=name;$('#tText').textContent=text;const b=$('#tGo');b.textContent=goLabel||'Begin';b.classList.toggle('hidden',!go);$('#tLater').textContent=go?'Not yet':'Okay';b.onclick=go||null;$('#talk .portrait').style.setProperty('--glow',FL().glow+'88');openM('talk');tone(300,.1,'triangle',.05);tone(450,.14,'triangle',.05,.09);setTimeout(()=>(go?b:$('#tLater')).focus(),60)}
+function interact(){const t=target;if(!t||paused)return;const f=FL();
+ if(t.t==='guardian'){const gd=f.guardians[t.i];talk(gd[0],S.fl.g[t.i]?'SIGIL ALREADY WON · PRACTICE':'GUARDIAN · '+(f.sub==='mix'?'ALL SUBJECTS':SUBJECTS[f.sub].name.toUpperCase()),gd[1],S.fl.g[t.i]?'Back for more? I never tire of a good question. Practice earns XP and gems.':gd[2]+' Answer at least 3 of my 4 questions to win my sigil.',()=>startQuiz('guardian',t.i),'I accept! →')}
+ else if(t.t==='chest')startQuiz('chest',t.i);
+ else if(t.t==='rune'){const cx=CODEX.filter(c=>c.fl===theme())[t.i],isNew=!S.codex.includes(cx.id);S.fl.ru.push(t.i);if(isNew){S.codex.push(cx.id)}gainXP(isNew?25:8);save();checkAch();showLoot({eye:'RUNE STONE',title:cx.t,html:`<div class="relic" style="--rc:#c9a8ff">📜</div><div class="fact" style="--rc:#c9a8ff">${esc(cx.f)}</div><div class="gains"><span>+${isNew?25:8} XP</span>${isNew?'<span>📜 Added to your Codex</span>':''}</div>`,rc:'#c9a8ff'});chime([440,554,659,880])}
+ else if(t.t==='door'){const n=S.fl.g.filter(Boolean).length;if(n<4){talk('🚪','SEALED','The sealed door',`Four sigil-shaped hollows glow in the wood. You have ${n} of 4. Win the rest from this floor’s guardians.`);return}S.fl.door=1;W.g[18][16]=0;save();chime([196,247,294,392,494],'triangle');burst(innerWidth/2,innerHeight/2,50);toast('🚪 The seal breaks! The door grinds open.','Something big is waiting inside…')}
+ else if(t.t==='boss'){talk(f.boss[0],'FLOOR BOSS',f.boss[1],f.boss[2]+` (It has 6 health. You have ${3+(S.shop.pet==='pet3'?1:0)} hearts${S.shop.shields?` and ${S.shop.shields} shield charm${S.shop.shields>1?'s':''}`:''}. Fast first-try answers hit twice as hard.)`,()=>startQuiz('boss'),'Fight! ⚔️')}
+ else if(t.t==='stairs'){const last=theme()===4;talk('⬇️','THE WAY DOWN','Stairs into the dark',last?'Below Emberclaw’s vault the dungeon begins again, deeper and harder, with tougher questions on every floor. Ready?':`The stairs spiral down to ${FLOORS[(theme()+1)%5].name}. ${FLOORS[(theme()+1)%5].blurb}`,()=>{S.depth++;S.fl=null;enterFloor();save();closeM();checkAch();toast(`⬇️ Floor ${S.depth+1}: ${FL().name}`,FL().blurb);chime([392,330,262,196],'triangle')},'Descend →')}}
+
+/* ---------------- quiz ---------------- */
+let Q=null;
+function startQuiz(kind,ix){const f=FL();Q={kind,ix,qi:0,n:kind==='guardian'?4:kind==='chest'?1:99,res:[],hp:6,hearts:3+(S.shop.pet==='pet3'?1:0),lost:0,off:rint(0,3),xp:0};openM('quiz');nextQ()}
+function nextQ(){const f=FL(),sub=Q.kind==='chest'?pick(Object.keys(SUBJECTS)):f.sub==='mix'?Object.keys(SUBJECTS)[(Q.qi+Q.off)%4]:f.sub,sk=S.skills[sub];let L=sk.lv+cycle()+(Q.kind==='guardian'&&Q.qi===3&&sk.up>=2?1:0),q;
+ if(Q.kind==='boss'&&Q.hp<=1){q=lockPuzzle(3);q.sub='logic';q.lv=clamp(L,1,6);q.prompt='FINAL BLOW! '+q.prompt}else q=makeQ(sub,L);
+ Object.assign(Q,{q,tries:0,hint:false,done:false,t0:performance.now(),win:({choice:12,num:25,text:45,lock:120}[q.type]+(S.shop.pet==='pet2'?8:0))*1e3});renderQ()}
+function renderQ(){const q=Q.q,sj=SUBJECTS[q.sub],card=$('#quiz .card');card.style.setProperty('--sj',sj.col);card.scrollTop=0;$('#qChip').textContent=`${sj.icon} ${sj.name.toUpperCase()} · LV ${q.lv}`;$('#qCombo').textContent=S.st.streak>=2?`🔥 ${S.st.streak}`:'';
+ $('#qPips').innerHTML=Q.kind==='boss'?'':Array.from({length:Q.n},(v,i)=>`<i class="${i<Q.qi?(Q.res[i]?'d':'m'):i===Q.qi?'n':''}"></i>`).join('');
+ const foe=$('#qFoe');if(Q.kind==='boss'){const b=FL().boss;foe.classList.remove('hidden');$('#fFace').textContent=b[0];$('#fName').textContent=b[1];drawFoe()}else if(Q.kind==='guardian'){const gd=FL().guardians[Q.ix];foe.classList.remove('hidden');$('#fFace').textContent=gd[0];$('#fName').textContent=gd[1];$('#fHp').innerHTML='';$('#fHearts').textContent=''}else foe.classList.add('hidden');
+ $('#qPrompt').textContent=q.prompt;$('#qvis').innerHTML=q.visual||'';$('#qFb').className='fb';$('#qFb').innerHTML='';$('#qNext').classList.add('hidden');const hb=$('#qHint');hb.classList.remove('hidden');hb.disabled=false;hb.textContent=S.shop.pet==='pet0'?'💡 Hint (free, thanks to Hoot)':'💡 Hint (halves the XP)';
+ const tb=$('#qTimer');tb.getAnimations().forEach(a=>a.cancel());RM||tb.animate([{transform:'scaleX(1)'},{transform:'scaleX(0)'}],{duration:Q.win,fill:'forwards'});
+ const A=$('#qAns');A.innerHTML='';
+ if(q.type==='choice'){A.className='ans';q.options.forEach((o,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=o;b.addEventListener('click',()=>answer(o,b));A.appendChild(b)});setTimeout(()=>A.firstChild&&A.firstChild.focus({preventScroll:true}),80)}
+ else if(q.type==='num'){A.className='typed';Q.buf='';A.innerHTML=`<div class="disp" id="qDisp"></div><div class="pad">${['1','2','3','4','5','6','7','8','9','0','⌫','±','.'].map(k=>`<button data-k="${k}">${k}</button>`).join('')}<button class="go" data-k="ok">Check ✓</button></div>`;A.querySelectorAll('[data-k]').forEach(b=>b.addEventListener('click',()=>padKey(b.dataset.k)));showBuf()}
+ else if(q.type==='text'){A.className='typed';A.innerHTML=`<input class="disp" id="qIn" maxlength="14" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="type here"><button class="btn" id="qGo">Check ✓</button>`;const inp=$('#qIn');$('#qGo').addEventListener('click',()=>answer(inp.value,inp));inp.addEventListener('keydown',e=>{e.stopPropagation();e.key==='Enter'&&(Q.done?$('#qNext').click():answer(inp.value,inp))});TOUCH||setTimeout(()=>inp.focus({preventScroll:true}),80)}
+ else{A.className='typed';Q.dial=[0,0,0];Q.cur=0;A.innerHTML=`<div class="clues">${q.clues.map(c=>`<div class="clue"><b>${c.g.map(d=>`<i>${d}</i>`).join('')}</b><span>${esc(c.t)}</span></div>`).join('')}</div><div class="dials" id="qDials">${[0,1,2].map(i=>`<div class="dial" data-i="${i}"><button data-d="1" aria-label="up">▲</button><b>0</b><button data-d="-1" aria-label="down">▼</button></div>`).join('')}</div><button class="btn" id="qGo">Try the lock 🔓</button>`;A.querySelectorAll('.dial button').forEach(b=>b.addEventListener('click',()=>{const i=+b.parentElement.dataset.i;Q.dial[i]=(Q.dial[i]+ +b.dataset.d+10)%10;Q.cur=i;showDials();tone(500+Q.dial[i]*30,.04,'square',.02)}));$('#qGo').addEventListener('click',()=>answer(Q.dial.join(''),$('#qDials')));showDials()}}
+function drawFoe(){$('#fHp').innerHTML=Array.from({length:6},(v,i)=>`<i class="${i<Q.hp?'':'off'}"></i>`).join('');$('#fHearts').textContent='❤️'.repeat(Math.max(0,Q.hearts))+'🖤'.repeat(Q.lost)+(S.shop.shields?' '+'🛡️'.repeat(S.shop.shields):'')}
+function showBuf(){const d=$('#qDisp');if(d&&Q)d.innerHTML=(Q.buf===''?'<span style="opacity:.3">?</span>':esc(Q.buf))+(Q.q.unit?`<small>${esc(Q.q.unit)}</small>`:'')}
+function showDials(){$$('#qDials .dial').forEach((d,i)=>{d.querySelector('b').textContent=Q.dial[i];d.classList.toggle('cur',i===Q.cur)})}
+function padKey(k){if(!Q||Q.done||Q.q.type!=='num')return;if(k==='ok'){Q.buf!==''&&Q.buf!=='-'&&answer(Q.buf,$('#qDisp'));return}if(k==='⌫')Q.buf=Q.buf.slice(0,-1);else if(k==='±')Q.buf=Q.buf[0]==='-'?Q.buf.slice(1):'-'+Q.buf;else if(k==='.'){Q.buf.includes('.')||(Q.buf+=Q.buf===''||Q.buf==='-'?'0.':'.')}else if(Q.buf.replace(/\D/g,'').length<9)Q.buf+=k;tone(600,.03,'square',.015);showBuf()}
+function judge(v){const q=Q.q;if(q.type==='num')return v!==''&&Math.abs(parseFloat(v)-parseFloat(q.answer))<1e-9;if(q.type==='text')return String(v).trim().toUpperCase()===q.answer;return String(v)===q.answer}
+function answer(val,el){if(!Q||Q.done)return;const q=Q.q,sk=S.skills[q.sub],fb=$('#qFb'),boss=Q.kind==='boss';
+ if(judge(val)){Q.done=true;const first=Q.tries===0,fast=first&&performance.now()-Q.t0<Q.win;S.st.ans++;S.st.right++;
+  if(first){sk.total++;sk.right++;S.st.streak++;S.st.best=Math.max(S.st.best,S.st.streak);sk.up++;sk.down=0;if(sk.up>=3&&sk.lv<6){sk.lv++;sk.up=0;setTimeout(()=>toast(`${SUBJECTS[q.sub].icon} ${SUBJECTS[q.sub].name} is now level ${sk.lv}!`,'The questions get tougher'),900)}}
+  fast&&S.st.fast++;q.type==='lock'&&S.st.locks++;q.type==='text'&&/code/.test(q.prompt)&&S.st.ciphers++;
+  let xp=(8+4*q.lv)*(first?1.5:1)*(Q.hint&&S.shop.pet!=='pet0'?.5:1)+(fast?6:0)+(first?Math.min(S.st.streak,10):0);xp=Math.round(xp);Q.xp+=xp;Q.res[Q.qi]=first?1:2;gainXP(xp);
+  el.classList.add('ok');q.type==='choice'&&$$('#qAns .opt').forEach(b=>b.disabled=true);$('#qTimer').getAnimations().forEach(a=>a.pause());
+  let extra='';if(boss){const dmg=fast?2:1;Q.hp=Math.max(0,Q.hp-dmg);const fo=$('#qFoe');fo.classList.remove('hit');void fo.offsetWidth;fo.classList.add('hit');drawFoe();extra=fast?' <b>Critical hit! −2</b>':' Hit! −1';tone(140,.2,'sawtooth',.06);tone(90,.25,'sawtooth',.06,.08)}
+  fb.className='fb ok';fb.innerHTML=`<b>${pick(['Correct!','Brilliant!','Spot on!','Nailed it!','Sharp thinking!'])}</b> +${xp} XP${fast?' ⚡ speed bonus':''}${extra}<br>${esc(q.explain)}`;
+  const rc=el.getBoundingClientRect();burst(rc.left+rc.width/2,rc.top+rc.height/2,first?30:14);chime(first?[659,880,1175]:[659,880]);$('#qHint').classList.add('hidden');showNext();checkAch();save()}
+ else{Q.tries++;S.st.streak=0;if(Q.tries===1){sk.total++;sk.up=0;sk.down++;if(sk.down>=2&&sk.lv>1){sk.lv--;sk.down=0}}
+  el.classList.remove('no');void el.offsetWidth;el.classList.add('no');q.type==='choice'&&(el.disabled=true);tone(160,.18,'sawtooth',.05);$('#qCombo').textContent='';
+  if(boss){if(S.shop.shields>0){S.shop.shields--;toast('🛡️ Your shield charm absorbs the blow!')}else{Q.hearts--;Q.lost++}drawFoe();if(Q.hearts<=0){Q.done=true;S.st.ans++;save();setTimeout(()=>{const b=FL().boss;talk(b[0],'YOU RETREAT',b[1],'Ha! Come back when you have thought harder. (Catch your breath. The boss recovers, but you keep all the XP you earned. A shield charm from the shop can help.)')},700);return}}
+  const lim=Q.kind==='chest'?2:3;
+  if(!boss&&Q.tries>=lim){Q.done=true;S.st.ans++;Q.res[Q.qi]=0;fb.className='fb no';fb.innerHTML=`<b>The answer was ${esc(q.type==='lock'?q.answer.split('').join(' '):q.answer)}.</b><br>${esc(q.explain)}`;q.type==='choice'&&$$('#qAns .opt').forEach(b=>{b.disabled=true;b.textContent===q.answer&&b.classList.add('ok')});$('#qHint').classList.add('hidden');showNext();save()}
+  else{fb.className='fb no';fb.innerHTML=boss?`<b>Wrong!</b> ${esc(FL().boss[1])} strikes back. Try again.`:`<b>Not quite.</b> ${Q.tries>=2&&q.hint?'Hint: '+esc(q.hint):'Have another go.'}`;if(q.type==='num'){Q.buf='';setTimeout(showBuf,350)}}
+  save()}}
+function showNext(){const nb=$('#qNext'),last=Q.kind==='boss'?Q.hp<=0:Q.qi>=Q.n-1;nb.textContent=last?(Q.kind==='boss'?'Victory! →':'Finish →'):'Next →';nb.classList.remove('hidden');setTimeout(()=>nb.focus({preventScroll:true}),60)}
+function useHint(){if(!Q||Q.done)return;const q=Q.q,fb=$('#qFb');Q.hint=true;$('#qHint').disabled=true;fb.className='fb hint';if(q.hint)fb.textContent='💡 '+q.hint;else if(q.type==='choice'){const wrong=$$('#qAns .opt').filter(b=>!b.disabled&&b.textContent!==q.answer);if(wrong.length>1){const w=pick(wrong);w.disabled=true;w.classList.add('out');fb.textContent=`💡 Your lantern flickers: it is not “${w.textContent}”.`}else fb.textContent='💡 Only one sensible choice is left!'}else fb.textContent='💡 Take it one step at a time.';tone(700,.1,'sine',.04)}
+function advance(){if(!Q||!Q.done)return;const f=FL();
+ if(Q.kind==='boss'){if(Q.hp>0){Q.qi++;nextQ();return}S.fl.boss=1;S.st.boss++;Q.lost||S.st.flawless++;S.best=Math.max(S.best,S.depth+1);const {rel,dupe}=rollRelic(Math.random()<.5?'epic':'rare'),gems=50+10*cycle();gainGems(gems+(dupe?RARITY[rel.rar].g:0));gainXP(100);save();checkAch();showLoot({eye:'BOSS DEFEATED!',title:`${f.boss[1]} is beaten!`,rel,dupe,gains:[`+${gems} 💎`,'+100 XP','⬇️ Stairs revealed'],big:true});return}
+ if(Q.kind==='chest'){if(Q.res[0]){S.fl.ch.push(Q.ix);S.st.chests++;const gems=rint(8,16)+2*S.depth;let got=null;if(Math.random()<.4)got=rollRelic();gainGems(gems+(got&&got.dupe?RARITY[got.rel.rar].g:0));save();checkAch();showLoot({eye:'CHEST OPENED',title:got?'Treasure inside!':'A pile of gems!',rel:got&&got.rel,dupe:got&&got.dupe,gains:[`+${gems} 💎`,`+${Q.xp} XP`],plain:!got})}else{closeM();toast('🧰 The chest stays shut','Come back and try a new riddle')}return}
+ if(Q.qi<Q.n-1){Q.qi++;nextQ();return}
+ const solved=Q.res.filter(Boolean).length,firsts=Q.res.filter(r=>r===1).length,was=S.fl.g[Q.ix],gd=f.guardians[Q.ix];
+ if(solved<3){talk(gd[0],'TRIAL NOT PASSED',gd[1],`You solved ${solved} of 4. So close! You keep the ${Q.xp} XP. Come back and try again whenever you like.`);return}
+ if(!was){S.fl.g[Q.ix]=1;const {rel,dupe}=rollRelic(firsts===4?'rare':'common'),gems=12+4*S.depth+(firsts===4?10:0);gainGems(gems+(dupe?RARITY[rel.rar].g:0));save();checkAch();const n=S.fl.g.filter(Boolean).length;showLoot({eye:firsts===4?'PERFECT TRIAL!':'TRIAL PASSED',title:`${gd[1]}’s sigil is yours`,rel,dupe,gains:[`🔶 Sigil ${n} of 4`,`+${gems} 💎`,`+${Q.xp} XP`],note:n>=4?'You hold all four sigils. Find the sealed door!':''})}
+ else{const gems=5+S.depth;let got=null;if(Math.random()<.15)got=rollRelic();gainGems(gems+(got&&got.dupe?RARITY[got.rel.rar].g:0));save();checkAch();showLoot({eye:'PRACTICE COMPLETE',title:`${solved} of 4 solved`,rel:got&&got.rel,dupe:got&&got.dupe,gains:[`+${gems} 💎`,`+${Q.xp} XP`],plain:!got})}hud()}
+function showLoot(o){const rc=o.rc||(o.rel?RARITY[o.rel.rar].c:'#e9b955');$('#loot .card').style.setProperty('--rc',rc);$('#lEye').textContent=o.eye;$('#lTitle').textContent=o.title;
+ $('#lBody').innerHTML=o.html||((o.rel?`<div class="relic">${o.rel.e}</div><div class="rar">${RARITY[o.rel.rar].n.toUpperCase()} RELIC${o.dupe?' · DUPLICATE':''}</div><h3 style="margin-top:4px">${esc(o.rel.name)}</h3><div class="fact">${esc(o.rel.fact)}</div>${o.dupe?`<p class="lede" style="font-size:13px">You already had this one, so it turns into +${RARITY[o.rel.rar].g} gems.</p>`:''}`:'<div class="relic">💎</div>')+`<div class="gains">${(o.gains||[]).map(g=>`<span>${g}</span>`).join('')}</div>${o.note?`<p class="lede"><b>${esc(o.note)}</b></p>`:''}`);
+ openM('loot');hud();if(o.rel){const r=o.rel.rar;chime(r==='legendary'?[523,659,784,1047,1319,1568,2093]:r==='epic'?[523,659,784,1047,1319]:[659,784,1047],'triangle');burst(innerWidth/2,innerHeight*.4,r==='legendary'?160:r==='epic'?100:o.big?90:50,[rc,'#fff','#ffd257'])}else if(!o.html){chime([784,1047]);burst(innerWidth/2,innerHeight*.4,30)}setTimeout(()=>$('#lOk').focus(),80)}
+
+/* ---------------- panels ---------------- */
+let relSel=null;
+function panel(p,arg){const B=$('#pBody');openM('panel');
+ if(p==='relics'){const own=Object.keys(S.relics).length;$('#pEye').textContent='RELIC VAULT';$('#pTitle').textContent=`${own} of ${RELICS.length} relics found`;const sel=RELICS.find(r=>r.id===relSel&&S.relics[r.id]);
+  B.innerHTML=(sel?`<div class="fact" style="--rc:${RARITY[sel.rar].c};max-width:none"><b>${sel.e} ${esc(sel.name)}</b> · <span style="color:${RARITY[sel.rar].c}">${RARITY[sel.rar].n}</span>${S.relics[sel.id]>1?` · ×${S.relics[sel.id]}`:''}<br>${esc(sel.fact)}</div>`:`<p class="lede" style="margin:8px 0 12px;max-width:none">Win relics from guardians, chests and bosses. Tap one to read its secret.</p>`)+`<div class="grid">${RELICS.map(r=>S.relics[r.id]?`<button class="cell" data-r="${r.id}" style="--rc:${RARITY[r.rar].c}"><span>${r.e}</span>${esc(r.name)}<small>${RARITY[r.rar].n.toUpperCase()}</small></button>`:`<div class="cell lock" style="--rc:${RARITY[r.rar].c}"><span>${r.e}</span>???<small>${RARITY[r.rar].n.toUpperCase()}</small></div>`).join('')}</div>`;B.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{relSel=b.dataset.r;panel('relics');$('#panel .card').scrollTop=0}))}
+ else if(p==='trophies'){$('#pEye').textContent='TROPHY HALL';$('#pTitle').textContent=`${S.ach.length} of ${ACH.length} trophies`;B.innerHTML=`<div class="list" style="margin-top:12px">${ACH.slice().sort((a,b)=>S.ach.includes(b.id)-S.ach.includes(a.id)).map(a=>{const d=S.ach.includes(a.id);return`<div class="item ${d?'done':'locked'}"><span class="ic">${d?a.e:'🔒'}</span><div class="grow"><b>${esc(a.name)}</b><small>${esc(a.desc)}</small></div>${d?'<b>✓</b>':''}</div>`}).join('')}</div>`}
+ else if(p==='map'){$('#pEye').textContent=`FLOOR ${S.depth+1}`;$('#pTitle').textContent=FL().name;B.innerHTML=`<p class="lede" style="margin:8px 0;max-width:none">The map fills in as you explore (${S.st.explored>=90?'90%+':Math.min(S.st.explored,100)+'%'} best). <span style="color:#ff6b9a">●</span> guardian · <span style="color:#6fe0a0">●</span> sigil won · <span style="color:#ffb04a">●</span> chest · <span style="color:#c9a8ff">●</span> rune stone · <span style="color:#ff4a3a">●</span> boss</p><div class="mapwrap"><canvas id="bigmap" width="630" height="630"></canvas></div>`;const G=$('#bigmap').getContext('2d');mapDraw(G,30);G.fillStyle='#ffb04a';G.save();G.translate(P.x*30,P.y*30);G.rotate(P.a+Math.PI/2);G.beginPath();G.moveTo(0,-13);G.lineTo(9,10);G.lineTo(0,5);G.lineTo(-9,10);G.fill();G.restore()}
+ else if(p==='shop'){$('#pEye').textContent='THE GOBLIN MARKET';$('#pTitle').textContent=`You have ${fmt(S.gems)} 💎`;B.innerHTML=`<div class="list" style="margin-top:12px">${SHOP.map(it=>{const own=S.shop.own.includes(it.id),isL=/^lamp/.test(it.id),isP=/^pet/.test(it.id),active=isL?S.shop.lamp===it.id:isP?S.shop.pet===it.id:false;let btn;if(it.id==='shield')btn=`<button class="btn ghost" data-buy="shield" ${S.gems<it.cost||S.shop.shields>=3?'disabled':''}>${S.shop.shields>=3?'Full (3)':`Buy · ${it.cost} 💎`}</button>`;else if(!own)btn=`<button class="btn ghost" data-buy="${it.id}" ${S.gems<it.cost?'disabled':''}>Buy · ${it.cost} 💎</button>`;else btn=`<button class="btn ghost" data-use="${it.id}">${active?(isP?'Send home':'Lit ✓'):(isP?'Bring along':'Light it')}</button>`;return`<div class="item ${active?'done':''}"><span class="ic">${it.e}</span><div class="grow"><b>${esc(it.name)}${it.id==='shield'?` (you have ${S.shop.shields})`:''}</b><small>${esc(it.desc)}</small></div>${btn}</div>`}).join('')}</div>`;
+  B.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',()=>{const it=SHOP.find(i=>i.id===b.dataset.buy);if(S.gems<it.cost)return;S.gems-=it.cost;if(it.id==='shield')S.shop.shields=Math.min(3,S.shop.shields+1);else{S.shop.own.push(it.id);/^lamp/.test(it.id)?S.shop.lamp=it.id:(S.shop.pet=it.id,pet.x=P.x,pet.y=P.y)}chime([523,784,1047]);burst(innerWidth/2,innerHeight/2,40);save();hud();checkAch();panel('shop')}));
+  B.querySelectorAll('[data-use]').forEach(b=>b.addEventListener('click',()=>{const id=b.dataset.use;if(/^lamp/.test(id))S.shop.lamp=id;else{S.shop.pet=S.shop.pet===id?'':id;pet.x=P.x;pet.y=P.y}save();panel('shop')}))}
+ else{const tab=arg||'lore';$('#pEye').textContent='CODEX';$('#pTitle').textContent=tab==='lore'?`${S.codex.length} of ${CODEX.length} rune stones read`:tab==='stats'?`${S.name}’s progress`:'How to play';
+  let h=`<div class="tabs"><button data-t="lore" class="${tab==='lore'?'on':''}">📜 Lore</button><button data-t="stats" class="${tab==='stats'?'on':''}">📊 Progress</button><button data-t="help" class="${tab==='help'?'on':''}">❓ How to play</button></div>`;
+  if(tab==='lore')h+=`<div class="list">${CODEX.map(c=>S.codex.includes(c.id)?`<div class="item done"><span class="ic">📜</span><div class="grow"><b>${esc(c.t)}</b><small style="color:#eadfc6">${esc(c.f)}</small></div></div>`:`<div class="item locked"><span class="ic">🔒</span><div class="grow"><b>???</b><small>A rune stone on floor ${c.fl+1}: ${FLOORS[c.fl].name}</small></div></div>`).join('')}</div>`;
+  else if(tab==='stats'){const L=levelOf(S.xp);h+=`<div class="list">${Object.keys(SUBJECTS).map(k=>{const sj=SUBJECTS[k],sk=S.skills[k],acc=sk.total?Math.round(sk.right/sk.total*100):0;return`<div class="item" style="--sj:${sj.col}"><span class="ic">${sj.icon}</span><div class="grow"><b>${sj.name} · level ${sk.lv} of 6</b><small>${sk.total?`${sk.right} of ${sk.total} right first try (${acc}%)`:'Not tried yet'}</small><div class="meter"><i style="width:${sk.lv/6*100}%"></i></div></div></div>`}).join('')}</div><div class="help"><div><b>${L}</b>Adventurer level</div><div><b>${fmt(S.xp)}</b>Total XP</div><div><b>${S.st.right}</b>Correct answers</div><div><b>${S.st.best}</b>Best streak</div><div><b>${S.st.boss}</b>Bosses beaten</div><div><b>${S.best+1}</b>Deepest floor</div></div><p class="lede" style="font-size:12px;max-width:none">Each subject moves up a level after three first-try answers in a row, and eases down after two misses in a row. Level 2 is roughly Year 5 and level 6 roughly Year 8.</p><div class="row"><button class="btn ghost" id="resetBtn">Start a new adventure</button></div>`}
+  else h+=`<div class="help"><div><b>W A S D / arrows</b>Move and turn</div><div><b>Drag</b>Look around</div><div><b>E or tap</b>Talk, open, read</div><div><b>Space</b>Jump</div><div><b>M</b>Open the map</div><div><b>1 – 4, Enter</b>Answer and continue</div></div><p class="lede" style="max-width:none">Each floor has four guardians. Pass a guardian’s trial (3 of 4 right) to win a sigil. Four sigils unseal the boss door. Beat the boss to reveal the stairs down. Along the way, crack riddle chests, read rune stones and scoop up gems. Follow the compass arrow if you get lost.</p>`;
+  B.innerHTML=h;B.querySelectorAll('[data-t]').forEach(b=>b.addEventListener('click',()=>panel('codex',b.dataset.t)));const rb=$('#resetBtn');rb&&rb.addEventListener('click',()=>{if(rb.dataset.sure){const nm=S.name;S=freshSave();S.name=nm;S.started=1;enterFloor();save();closeM();toast('A new adventure begins')}else{rb.dataset.sure=1;rb.textContent='Tap again to erase all progress'}})}}
+
+/* ---------------- input ---------------- */
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;keys[e.code]=true;const qo=!$('#quiz').classList.contains('hidden');
+ if(qo&&Q){if(Q.done){(e.key==='Enter'||e.code==='Space')&&(e.preventDefault(),$('#qNext').click());return}const q=Q.q;if(q.type==='choice'&&/^[1-4]$/.test(e.key)){const b=$$('#qAns .opt')[+e.key-1];b&&!b.disabled&&b.click()}else if(q.type==='num'){if(/^[0-9]$/.test(e.key))padKey(e.key);else if(e.key==='Backspace')padKey('⌫');else if(e.key==='-')padKey('±');else if(e.key==='.')padKey('.');else if(e.key==='Enter')padKey('ok')}else if(q.type==='lock'){if(/^[0-9]$/.test(e.key)){Q.dial[Q.cur]=+e.key;Q.cur=(Q.cur+1)%3;showDials()}else if(e.key==='Enter')$('#qGo').click();else if(e.key==='ArrowLeft'){Q.cur=(Q.cur+2)%3;showDials()}else if(e.key==='ArrowRight'){Q.cur=(Q.cur+1)%3;showDials()}else if(e.key==='ArrowUp'||e.key==='ArrowDown'){Q.dial[Q.cur]=(Q.dial[Q.cur]+(e.key==='ArrowUp'?1:9))%10;showDials()}}
+  e.key==='Escape'&&closeM();return}
+ if(e.key==='Escape'&&paused&&$('#welcome').classList.contains('hidden')){closeM();return}
+ if(paused)return;if(e.code==='Space'){const a=document.activeElement;a&&a.tagName==='BUTTON'&&(e.preventDefault(),a.blur())}
+ e.code==='KeyE'&&interact();e.code==='KeyM'&&panel('map')});
+addEventListener('keyup',e=>{keys[e.code]=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false;P.js=P.jt=0});
+let drag=null,tap=null;T.addEventListener('pointerdown',e=>{drag=e.clientX;tap=[e.clientX,e.clientY,performance.now()]});addEventListener('pointermove',e=>{if(drag!==null&&!paused){P.a=(P.a+(e.clientX-drag)*.006+TAU)%TAU;drag=e.clientX}});addEventListener('pointerup',e=>{drag=null});
+T.addEventListener('pointerup',e=>{if(tap&&!paused&&target&&Math.hypot(e.clientX-tap[0],e.clientY-tap[1])<10&&performance.now()-tap[2]<500)interact();tap=null});
+const joy=$('#joy'),knob=$('#joyK');let joyId=null;
+function joyMove(e){const rc=joy.getBoundingClientRect(),rad=rc.width/2;let dx=e.clientX-rc.left-rad,dy=e.clientY-rc.top-rad;const len=Math.hypot(dx,dy),mx=rad-14;if(len>mx){dx*=mx/len;dy*=mx/len}knob.style.transform=`translate(${dx}px,${dy}px)`;const nx=dx/mx,ny=dy/mx;P.js=Math.abs(ny)<.16?0:-ny;P.jt=Math.abs(nx)<.2?0:nx*.95}
+function joyEnd(){joyId=null;knob.style.transform='';P.js=0;P.jt=0}
+joy.addEventListener('pointerdown',e=>{e.preventDefault();joyId=e.pointerId;try{joy.setPointerCapture(joyId)}catch(err){}joyMove(e)});joy.addEventListener('pointermove',e=>{e.pointerId===joyId&&joyMove(e)});['pointerup','pointercancel','lostpointercapture'].forEach(n=>joy.addEventListener(n,e=>{e.pointerId===joyId&&joyEnd()}));
+$('#tjump').addEventListener('pointerdown',e=>{e.preventDefault();jumpReq=true});$('#tact').addEventListener('pointerdown',e=>{e.preventDefault();interact()});
+$$('[data-close]').forEach(b=>b.addEventListener('click',closeM));$('#qClose').addEventListener('click',closeM);$('#qHint').addEventListener('click',useHint);$('#qNext').addEventListener('click',advance);$('#lOk').addEventListener('click',closeM);
+$$('#bar5 [data-p]').forEach(b=>b.addEventListener('click',()=>{relSel=null;panel(b.dataset.p)}));$('#helpBtn').addEventListener('click',()=>panel('codex','help'));
+$('#soundBtn').addEventListener('click',()=>{S.sound=S.sound?0:1;save();hud();musicSync();S.sound&&chime([523,784])});
+document.addEventListener('visibilitychange',()=>{document.hidden&&save()});
+$('#beginBtn').addEventListener('click',()=>{const nm=$('#nameIn').value.replace(/[^\p{L}\p{N} '\-]/gu,'').trim().slice(0,16);nm&&(S.name=nm);const first=!S.started;S.started=1;paused0=false;$('#welcome').classList.add('hidden');paused=false;hud();musicSync();save();chime([262,330,392,523],'triangle');toast(first?`Welcome, ${S.name}!`:`Welcome back, ${S.name}!`,first?'Find a guardian. Follow the compass arrow.':`Floor ${S.depth+1}: ${FL().name}`)});
+$('#nameIn').addEventListener('keydown',e=>{e.stopPropagation();e.key==='Enter'&&$('#beginBtn').click()});
+
+/* ---------------- boot ---------------- */
+S=loadSave();$('#nameIn').value=S.name==='Adventurer'?'':S.name;S.started&&($('#beginBtn').textContent='Continue the descent 🔥');enterFloor();
+let lastF=performance.now();function frame(t){const dt=Math.min(.05,(t-lastF)/1e3);lastF=t;update(dt);render();requestAnimationFrame(frame)}requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>
